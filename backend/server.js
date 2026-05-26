@@ -136,6 +136,7 @@ app.use("/api/auth/login", rateLimit({
   legacyHeaders:   false,
 }));
 
+
 app.use("/api/auth/register", rateLimit({
   windowMs: 60 * 60 * 1000, // 1 soat
   max: 5,
