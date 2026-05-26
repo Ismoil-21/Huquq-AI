@@ -400,7 +400,7 @@ function SupportModal({ visible, onClose, isDark }) {
     }
     setLoading(true);
     try {
-      await axios.post('http://localhost:3000/api/support', {
+      await axios.post('https://huquq-ai-fpa2.onrender.com/api/support', {
         name: name.trim(),
         email: email.trim(),
         message: message.trim(),

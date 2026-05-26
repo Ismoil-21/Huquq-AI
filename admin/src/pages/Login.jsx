@@ -84,7 +84,7 @@ export default function Login() {
         </form>
 
         <p className={s.note}>
-          Asosiy sayt: <a href="http://localhost:5173" target="_blank" rel="noreferrer">mening-huquqim.uz</a>
+          Asosiy sayt: <a href="https://huquq-ai-seven.vercel.app/" target="_blank" rel="noreferrer">mening-huquqim.uz</a>
         </p>
       </div>
     </div>
