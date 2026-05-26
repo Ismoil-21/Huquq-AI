@@ -1,5 +1,6 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { LangProvider } from "./context/LangContext";
 import { ChatPanelProvider } from "./context/ChatPanelContext";
@@ -47,6 +48,7 @@ export default function App() {
       <ChatPanelProvider>
         <AuthProvider>
           <AppRoutes />
+          <SpeedInsights />
         </AuthProvider>
       </ChatPanelProvider>
     </LangProvider>
