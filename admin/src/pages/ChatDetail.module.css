@@ -1,0 +1,57 @@
+.page   { max-width: 900px; animation: fadeIn .25s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+.header {
+  display: flex; align-items: flex-start; gap: 1rem;
+  margin-bottom: 1.75rem; flex-wrap: wrap;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 1.25rem 1.5rem;
+}
+
+.back {
+  font-size: 13px; color: var(--text2);
+  transition: color .18s; padding: 6px 10px;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; gap: 4px;
+  flex-shrink: 0;
+}
+.back:hover { color: var(--accent2); border-color: rgba(59,130,246,.3); }
+
+.headerInfo { flex: 1; }
+.title { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: .6rem; letter-spacing: -.02em; }
+.meta  { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.metaItem { font-size: 12px; color: var(--text2); display: flex; align-items: center; gap: 4px; }
+
+.messages { display: flex; flex-direction: column; gap: 1.25rem; }
+
+.msg      { display: flex; flex-direction: column; gap: .35rem; animation: msgIn .2s ease both; }
+.msg.user { align-items: flex-end; }
+
+@keyframes msgIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+.msgRole {
+  font-size: 10.5px; font-weight: 700; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .07em;
+  display: flex; align-items: center; gap: 5px;
+}
+
+.msgContent {
+  max-width: 80%; padding: 14px 18px;
+  border-radius: 4px 16px 16px 16px;
+  background: var(--bg2); border: 1px solid var(--border);
+  font-size: 13.5px; line-height: 1.75; color: var(--text);
+  white-space: pre-wrap;
+}
+.msg.user .msgContent {
+  background: linear-gradient(135deg, var(--accent-glow), rgba(59,130,246,.06));
+  border-color: rgba(59,130,246,.25);
+  border-radius: 16px 4px 16px 16px;
+  color: var(--text);
+}
+
+.msgTime {
+  font-size: 10px; color: var(--text3);
+  font-family: var(--font-mono);
+  margin-top: 2px;
+}

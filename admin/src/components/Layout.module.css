@@ -1,0 +1,198 @@
+.shell { display: flex; height: 100vh; overflow: hidden; }
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 240px; flex-shrink: 0;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  transition: width .28s cubic-bezier(.4,0,.2,1);
+  overflow: hidden;
+  position: relative;
+}
+.sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
+}
+.collapsed .sidebar { width: 64px; }
+
+/* Brand */
+.brand {
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 20px; height: 64px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0; overflow: hidden;
+  position: relative;
+}
+.brandGlow {
+  position: absolute;
+  top: 50%; left: 20px;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: .08;
+  filter: blur(12px);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.brandIcon {
+  font-size: 22px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--accent-glow), rgba(96,165,250,.08));
+  border: 1px solid rgba(59,130,246,.25);
+  border-radius: var(--radius-sm);
+}
+.brandText {
+  font-size: 14px; font-weight: 700;
+  color: var(--text); white-space: nowrap;
+  letter-spacing: -.01em;
+}
+.brandSub {
+  font-size: 10px; color: var(--text3);
+  white-space: nowrap; letter-spacing: .06em;
+  text-transform: uppercase;
+  display: block;
+  margin-top: -2px;
+}
+
+/* Nav */
+.nav { flex: 1; padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+
+.navSection {
+  font-size: 10px; font-weight: 600; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .08em;
+  padding: 8px 10px 4px;
+  white-space: nowrap; overflow: hidden;
+}
+
+.link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: var(--radius-sm);
+  color: var(--text2); font-size: 13.5px; font-weight: 500;
+  transition: all .18s; white-space: nowrap; overflow: hidden;
+  position: relative;
+}
+.link:hover { background: var(--bg3); color: var(--text); }
+.link:hover .linkIcon { transform: scale(1.1); }
+.active {
+  background: linear-gradient(135deg, var(--accent-glow), var(--accent-glow2)) !important;
+  color: var(--accent2) !important;
+  border: 1px solid rgba(59,130,246,.18);
+}
+.active::before {
+  content: '';
+  position: absolute; left: 0; top: 50%;
+  width: 3px; height: 60%; border-radius: 0 2px 2px 0;
+  background: var(--accent);
+  transform: translateY(-50%);
+}
+.linkIcon {
+  font-size: 16px; flex-shrink: 0;
+  transition: transform .18s;
+  display: flex; align-items: center; justify-content: center;
+  width: 20px;
+}
+.linkLabel { overflow: hidden; text-overflow: ellipsis; }
+.badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+}
+
+/* Bottom */
+.sideBottom {
+  padding: 12px 10px;
+  border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.collapseBtn {
+  align-self: center; width: 30px; height: 30px;
+  border-radius: var(--radius-sm);
+  background: var(--bg3); color: var(--text2);
+  font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s; border: 1px solid var(--border);
+}
+.collapseBtn:hover { background: var(--border2); color: var(--text); }
+
+.userRow {
+  display: flex; align-items: center; gap: 10px;
+  overflow: hidden; padding: 6px 4px;
+  border-radius: var(--radius-sm);
+  cursor: default;
+}
+.userAvatar {
+  width: 34px; height: 34px; border-radius: var(--radius-sm); flex-shrink: 0;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700;
+  box-shadow: 0 2px 8px rgba(59,130,246,.3);
+}
+.userInfo { display: flex; flex-direction: column; overflow: hidden; }
+.userName {
+  font-size: 13px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.userRole { font-size: 11px; color: var(--text3); }
+.logoutBtn {
+  font-size: 11px; color: var(--text3); text-align: left;
+  transition: color .18s; margin-top: 2px;
+  padding: 0;
+}
+.logoutBtn:hover { color: var(--red); }
+
+/* ── Main area ── */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+.topbar {
+  height: 64px; flex-shrink: 0;
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 1.75rem;
+  position: relative;
+}
+.topbar::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--border) 20%, var(--border) 80%, transparent 100%);
+}
+.topLeft  { display: flex; align-items: center; gap: 1rem; }
+.topTitle {
+  font-size: 14px; font-weight: 700; color: var(--text);
+  letter-spacing: -.01em;
+}
+.topBadge {
+  font-size: 10px; font-weight: 600; color: var(--accent2);
+  background: var(--accent-glow); border: 1px solid rgba(59,130,246,.2);
+  border-radius: 20px; padding: 2px 8px;
+  letter-spacing: .04em; text-transform: uppercase;
+}
+.topRight { display: flex; align-items: center; gap: 1rem; }
+.topTime  { font-size: 12px; color: var(--text3); font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+.topAdmin { font-size: 13px; color: var(--text2); display: flex; align-items: center; gap: 6px; }
+.topLogout {
+  font-size: 12px; color: var(--text3);
+  transition: color .2s; padding: 4px 8px;
+  border: 1px solid var(--border); border-radius: var(--radius-xs);
+  background: var(--bg3);
+}
+.topLogout:hover { color: var(--red); border-color: var(--red-border); background: var(--red-bg); }
+
+.content { flex: 1; overflow-y: auto; padding: 1.75rem 2rem; }

@@ -1,0 +1,20 @@
+.page { display: flex; flex-direction: column; gap: 1.75rem; max-width: 1400px; animation: fadeIn .3s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+.statsGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+.chartsRow { display: grid; grid-template-columns: 1fr 380px; gap: 1rem; }
+
+.legend    { display: flex; flex-direction: column; gap: 6px; margin-top: 1rem; }
+.legendItem{ display: flex; align-items: center; gap: 10px; font-size: 12.5px; padding: 4px 0; }
+.legendDot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.legendName{ flex: 1; color: var(--text2); }
+.legendPct {
+  font-weight: 700; color: var(--text);
+  min-width: 36px; text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+@media(max-width:1100px) { .statsGrid { grid-template-columns: repeat(2,1fr); } .chartsRow { grid-template-columns: 1fr; } }
+@media(max-width:580px)  { .statsGrid { grid-template-columns: 1fr; } }

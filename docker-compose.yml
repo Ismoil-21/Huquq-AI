@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  mongodb:
+    image: mongo:7-jammy
+    container_name: huquqim_mongo
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - huquqim
+
+  backend:
+    build:
+      context: ./backend
+    container_name: huquqim_api
+    restart: unless-stopped
+    env_file: ./backend/.env
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/mening_huquqim
+      - FRONTEND_URL=http://localhost:5173
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongodb
+    networks:
+      - huquqim
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: huquqim_web
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    networks:
+      - huquqim
+
+  admin:
+    build:
+      context: ./admin
+    container_name: huquqim_admin
+    restart: unless-stopped
+    ports:
+      - "5174:80"
+    depends_on:
+      - backend
+    networks:
+      - huquqim
+
+volumes:
+  mongo_data:
+
+networks:
+  huquqim:
+    driver: bridge

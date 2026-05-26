@@ -1,0 +1,81 @@
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.pageSection {
+  padding: 80px 0;
+}
+
+.pageSectionAlt {
+  padding: 80px 0;
+  background: var(--gray-50);
+}
+
+.pageHero {
+  padding: 48px 0 32px;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.pageHeroTitle {
+  font-size: clamp(28px, 4vw, 42px);
+  color: var(--navy);
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.pageHeroSub {
+  font-size: 15px;
+  color: var(--gray-600);
+  font-weight: 300;
+  max-width: 560px;
+  line-height: 1.7;
+}
+
+.sHead {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.sHeadLeft {
+  margin-bottom: 2rem;
+}
+
+.sTitle {
+  font-size: clamp(26px, 3.5vw, 38px);
+  color: var(--navy);
+  margin-bottom: 0.75rem;
+  font-weight: 700;
+}
+
+.sLine {
+  width: 56px;
+  height: 3px;
+  background: var(--gold);
+  margin: 0 auto;
+  border-radius: 2px;
+}
+
+.sLineLeft {
+  width: 56px;
+  height: 3px;
+  background: var(--gold);
+  border-radius: 2px;
+}
+
+.btnGold {
+  background: linear-gradient(135deg, var(--gold) 0%, #b8770a 100%);
+  color: var(--navy);
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.22s;
+}
+
+.btnGold:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(201, 149, 58, 0.45);
+}

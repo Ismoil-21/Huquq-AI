@@ -1,0 +1,207 @@
+.wrap {
+  position: relative;
+  display: inline-flex;
+  z-index: 50;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.fullWidth .trigger {
+  width: 100%;
+  min-width: unset;
+}
+
+.fullWidth .dropdown {
+  left: 0;
+  right: 0;
+  min-width: unset;
+  transform-origin: top center;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  color: var(--navy);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  min-width: 120px;
+}
+
+.dark .trigger {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.trigger:hover,
+.open .trigger {
+  border-color: var(--gold);
+  box-shadow: 0 4px 16px rgba(201, 149, 58, 0.25);
+}
+
+.dark .trigger:hover,
+.dark.open .trigger {
+  background: rgba(201, 149, 58, 0.15);
+}
+
+.globe {
+  font-size: 14px;
+  opacity: 0.7;
+  transition: transform 0.3s;
+}
+
+.open .globe {
+  transform: rotate(20deg);
+}
+
+.triggerFlag {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.triggerLabel {
+  flex: 1;
+  text-align: left;
+}
+
+.chevron {
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  opacity: 0.6;
+  margin-left: 2px;
+}
+
+.open .chevron {
+  transform: rotate(-135deg) translateY(2px);
+  opacity: 1;
+}
+
+.dark .chevron {
+  border-color: var(--gold-light);
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 168px;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  background: var(--white);
+  border: 1px solid var(--gray-100);
+  border-radius: 12px;
+  box-shadow:
+    0 12px 40px rgba(11, 19, 34, 0.18),
+    0 0 0 1px rgba(201, 149, 58, 0.08);
+  animation: dropdownIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transform-origin: top right;
+}
+
+.dark .dropdown {
+  background: var(--navy-mid);
+  border-color: rgba(201, 149, 58, 0.25);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(201, 149, 58, 0.15);
+}
+
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--navy);
+  text-align: left;
+  transition: all 0.2s;
+  animation: optionIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.dark .option {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+@keyframes optionIn {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.option:hover {
+  background: var(--gray-50);
+}
+
+.dark .option:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.optionActive {
+  background: var(--gold-pale) !important;
+  color: var(--navy) !important;
+}
+
+.dark .optionActive {
+  background: rgba(201, 149, 58, 0.2) !important;
+  color: var(--gold-light) !important;
+}
+
+.optionFlag {
+  font-size: 18px;
+}
+
+.optionName {
+  flex: 1;
+}
+
+.check {
+  color: var(--gold);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.compact .trigger {
+  min-width: 88px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.compact .triggerLabel {
+  font-size: 12px;
+}
+
+.compact .globe {
+  display: none;
+}

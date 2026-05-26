@@ -1,0 +1,146 @@
+.aboutGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+}
+
+.aboutDesc {
+  font-size: 15.5px;
+  color: var(--gray-600);
+  line-height: 1.85;
+  margin-bottom: 2rem;
+  font-weight: 300;
+}
+
+.stats {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.statIcon {
+  font-size: 28px;
+}
+
+.stat strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1;
+}
+
+.stat span {
+  font-size: 12px;
+  color: var(--gray-600);
+  font-weight: 500;
+}
+
+.aboutImage {
+  display: flex;
+  justify-content: center;
+}
+
+.aboutImgPlaceholder {
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 4/3;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--navy-mid) 0%, var(--navy) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-lg);
+  border: 3px solid rgba(201, 149, 58, 0.25);
+}
+
+.aboutImgPlaceholder span {
+  font-size: 80px;
+  opacity: 0.6;
+}
+
+.lawGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.lawCard {
+  background: var(--white);
+  border: 1px solid var(--gray-100);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+}
+
+.lawTitle {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--navy);
+}
+
+.lawList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.lawList li {
+  font-size: 13px;
+  color: var(--gray-600);
+  padding-left: 14px;
+  position: relative;
+  font-weight: 300;
+}
+
+.lawList li::before {
+  content: "·";
+  position: absolute;
+  left: 0;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.warn {
+  background: var(--gold-pale);
+  border: 1px solid rgba(201, 149, 58, 0.25);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  font-size: 14px;
+  color: var(--gray-600);
+  line-height: 1.7;
+}
+
+@media (max-width: 1024px) {
+  .aboutGrid {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+  .aboutImage {
+    order: -1;
+  }
+  .lawGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .lawGrid {
+    grid-template-columns: 1fr;
+  }
+  .stats {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
