@@ -201,18 +201,23 @@ async function sendNotRegistered(chatId, tgUserId) {
 }
 
 // ── /start ─────────────────────────────────────────────────────
-bot.onText(/\/start/, async (msg) => {
-  const tgUserId  = msg.from.id;
-  const chatId    = msg.chat.id;
+bot.onText(/^\/start$/, async (msg) => {
+  // Faqat sof "/start" — deep link bo'lsa bu handler ishlamasin
+  const tgUserId   = msg.from.id;
+  const chatId     = msg.chat.id;
   const tgUsername = msg.from.username || null;
   sessions.delete(tgUserId);
 
+  // Til tanlanmagan bo'lsa — til so'ra, lekin avval ro'yxatdan o'tganmi tekshir
+  // Chunki ro'yxatdan o'tgan bo'lsa til tanlagandan keyin welcome ko'rsatamiz
+  const userId = await findOrLinkUser(tgUserId, tgUsername);
+
   if (!userLang.has(tgUserId)) {
+    // Til tanlash — callback_query da userId ni qayta tekshiramiz
     await safeSend(chatId, tg.uz.lang_choose, langKeyboard);
     return;
   }
 
-  const userId = await findOrLinkUser(tgUserId, tgUsername);
   if (!userId) {
     await sendNotRegistered(chatId, tgUserId);
     return;
@@ -257,8 +262,11 @@ bot.on("callback_query", async (query) => {
     await bot.answerCallbackQuery(query.id);
     await safeSend(chatId, tg[lang].lang_set);
 
+    // Til tanlagandan keyin darhol ro'yxatdan o'tganmi tekshir
     const userId = await findOrLinkUser(tgUserId, query.from.username);
-    if (!userId) return sendNotRegistered(chatId, tgUserId);
+    if (!userId) {
+      return sendNotRegistered(chatId, tgUserId);
+    }
     return safeSend(chatId, tg[lang].welcome, mainMenu(tgUserId));
   }
 });
@@ -398,13 +406,16 @@ bot.on("message", async (msg) => {
 });
 
 // ── DEEP LINK: /start link_<token> ─────────────────────────────
-// Saytdagi "Telegramni bog'lash" tugmasidan keladi.
-// User token bilan botga keladi — Telegram ID saqlanadi.
 bot.onText(/\/start link_([a-f0-9]+)/, async (msg, match) => {
   const tgUserId   = msg.from.id;
   const tgUsername = msg.from.username || null;
   const chatId     = msg.chat.id;
   const token      = match[1];
+
+  // Til yo'q bo'lsa default uz qilamiz
+  if (!userLang.has(tgUserId)) {
+    userLang.set(tgUserId, "uz");
+  }
 
   try {
     const user = await User.findOne({
@@ -434,9 +445,12 @@ bot.onText(/\/start link_([a-f0-9]+)/, async (msg, match) => {
 
     // Cache yangilash
     verifiedUsers.set(String(tgUserId), user._id);
+    sessions.delete(tgUserId);
 
     const lang = getLang(tgUserId);
     const T    = tg[lang] || tg.uz;
+
+    // Bog'langanligi + welcome bir xabarda
     await safeSend(chatId, T.linked || tg.uz.linked, mainMenu(tgUserId));
   } catch (err) {
     console.error("Deep link error:", err.message);
