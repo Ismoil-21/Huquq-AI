@@ -218,8 +218,10 @@ router.post("/login", bruteForceGuard, async (req, res) => {
       return res.status(400).json({ error: "Bu hisob Google orqali yaratilgan. Google bilan kiring." });
     }
     if (!user.emailVerified) {
+      console.log("User email not verified:", { email: user.email, username: user.username, emailVerified: user.emailVerified });
       // Check if SMTP is configured
       const smtpConfigured = process.env.SMTP_USER && process.env.SMTP_PASS;
+      console.log("SMTP configured:", smtpConfigured);
 
       if (smtpConfigured) {
         return res.status(403).json({
@@ -229,6 +231,7 @@ router.post("/login", bruteForceGuard, async (req, res) => {
         });
       } else {
         // Allow login without verification if SMTP not configured
+        console.log("SMTP not configured, auto-verifying user");
         user.emailVerified = true;
         await user.save();
       }

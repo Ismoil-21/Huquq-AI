@@ -11,7 +11,7 @@ SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=toxirovi82@gmail.com
-SMTP_PASS=fcqegjftlbloenuq
+SMTP_PASS=qvowbbauzwygflxk
 ```
 
 ## Gmail Setup Instructions
