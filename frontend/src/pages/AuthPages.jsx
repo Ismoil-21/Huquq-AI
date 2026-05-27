@@ -10,13 +10,27 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
 /* ───────── Google One Tap tugma ───────── */
 function GoogleButton({ label, onCredential, disabled }) {
+  const btnRef = useRef(null);
   const [gReady, setGReady] = useState(false);
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return;
-    const existing = document.getElementById("google-gsi-script");
-    if (existing) {
+
+    function initGoogle() {
+      if (!window.google?.accounts?.id) return;
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: (res) => onCredential(res.credential),
+        auto_select: false,
+        cancel_on_tap_outside: true,
+        use_fedcm_for_prompt: false, // ← FedCM ni o'chiramiz
+      });
       setGReady(true);
+    }
+
+    const existing = document.getElementById("google-gsi-script");
+    if (existing && window.google?.accounts?.id) {
+      initGoogle();
       return;
     }
 
@@ -24,20 +38,25 @@ function GoogleButton({ label, onCredential, disabled }) {
     script.id = "google-gsi-script";
     script.src = "https://accounts.google.com/gsi/client";
     script.async = true;
-    script.onload = () => setGReady(true);
+    script.defer = true;
+    script.onload = initGoogle;
     document.head.appendChild(script);
-  }, []);
+  }, [onCredential]);
 
-  const handleClick = useCallback(() => {
-    if (!gReady || !window.google) return;
-    window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: (res) => onCredential(res.credential),
-      auto_select: false,
-      cancel_on_tap_outside: true,
+  // gReady bo'lganda tugmani render qilamiz
+  useEffect(() => {
+    if (!gReady || !btnRef.current || !window.google?.accounts?.id) return;
+    btnRef.current.innerHTML = ""; // eski render ni tozalamiz
+    window.google.accounts.id.renderButton(btnRef.current, {
+      type: "standard",
+      theme: "outline",
+      size: "large",
+      text: label?.includes("ro'yxat") ? "signup_with" : "signin_with",
+      shape: "rectangular",
+      logo_alignment: "left",
+      width: btnRef.current.offsetWidth || 320,
     });
-    window.google.accounts.id.prompt();
-  }, [gReady, onCredential]);
+  }, [gReady, label]);
 
   if (!GOOGLE_CLIENT_ID) {
     return (
@@ -47,56 +66,33 @@ function GoogleButton({ label, onCredential, disabled }) {
         disabled={true}
         style={{ opacity: 0.5, cursor: "not-allowed" }}
       >
-        <svg width="18" height="18" viewBox="0 0 48 48" style={{ flexShrink: 0 }}>
-          <path
-            fill="#EA4335"
-            d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
-          />
-          <path
-            fill="#4285F4"
-            d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
-          />
-          <path
-            fill="#FBBC05"
-            d="M9.53 28.59c-.69-1.52-1.09-3.2-1.09-4.96s.4-3.44 1.09-4.96l-7.98-6.19C.47 10.72 0 13.13 0 16.5s.47 5.78 1.55 8.06l7.98-6.19z"
-          />
-          <path
-            fill="#34A853"
-            d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
-          />
-        </svg>
+        <GoogleIcon />
         <span>Google bilan kirish (sozlanmagan)</span>
       </button>
     );
   }
 
   return (
-    <button
-      type="button"
+    <div
+      ref={btnRef}
       className={s.googleBtn}
-      onClick={handleClick}
-      disabled={disabled || !gReady}
+      style={{
+        minHeight: 44,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: disabled ? 0.6 : 1,
+        pointerEvents: disabled ? "none" : "auto",
+      }}
     >
-      <svg width="18" height="18" viewBox="0 0 48 48" style={{ flexShrink: 0 }}>
-        <path
-          fill="#EA4335"
-          d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
-        />
-        <path
-          fill="#4285F4"
-          d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
-        />
-        <path
-          fill="#FBBC05"
-          d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
-        />
-        <path
-          fill="#34A853"
-          d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
-        />
-      </svg>
-      {label || "Google bilan kirish"}
-    </button>
+      {/* renderButton bu yerga Google tugmasini chizadi */}
+      {!gReady && (
+        <>
+          <GoogleIcon />
+          <span>{label || "Google bilan kirish"}</span>
+        </>
+      )}
+    </div>
   );
 }
 
