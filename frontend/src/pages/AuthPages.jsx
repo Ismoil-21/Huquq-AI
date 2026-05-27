@@ -8,11 +8,10 @@ import s from "./Auth.module.css";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
-
-// SVG ni alohida komponent qilib ajratamiz
+/* ───────── Google SVG Icon ───────── */
 function GoogleIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 48 48" style={{ flexShrink: 0 }}>
+    <svg width="20" height="20" viewBox="0 0 48 48" style={{ flexShrink: 0 }}>
       <path
         fill="#EA4335"
         d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
@@ -33,10 +32,11 @@ function GoogleIcon() {
   );
 }
 
-/* ───────── Google One Tap tugma ───────── */
-function GoogleButton({ label, onCredential, disabled }) {
+/* ───────── Google Button ───────── */
+function GoogleButton({ labelKey, onCredential, disabled }) {
   const btnRef = useRef(null);
   const [gReady, setGReady] = useState(false);
+  const { t } = useLang();
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return;
@@ -48,7 +48,7 @@ function GoogleButton({ label, onCredential, disabled }) {
         callback: (res) => onCredential(res.credential),
         auto_select: false,
         cancel_on_tap_outside: true,
-        use_fedcm_for_prompt: false, // ← FedCM ni o'chiramiz
+        use_fedcm_for_prompt: false,
       });
       setGReady(true);
     }
@@ -58,7 +58,6 @@ function GoogleButton({ label, onCredential, disabled }) {
       initGoogle();
       return;
     }
-
     const script = document.createElement("script");
     script.id = "google-gsi-script";
     script.src = "https://accounts.google.com/gsi/client";
@@ -68,56 +67,43 @@ function GoogleButton({ label, onCredential, disabled }) {
     document.head.appendChild(script);
   }, [onCredential]);
 
-  // gReady bo'lganda tugmani render qilamiz
-  useEffect(() => {
-    if (!gReady || !btnRef.current || !window.google?.accounts?.id) return;
-    btnRef.current.innerHTML = ""; // eski render ni tozalamiz
-    window.google.accounts.id.renderButton(btnRef.current, {
-      type: "standard",
-      theme: "outline",
-      size: "large",
-      text: label?.includes("ro'yxat") ? "signup_with" : "signin_with",
-      shape: "rectangular",
-      logo_alignment: "left",
-      width: btnRef.current.offsetWidth || 320,
+  const handleClick = useCallback(() => {
+    if (!gReady || !window.google?.accounts?.id) return;
+    window.google.accounts.id.prompt((notification) => {
+      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+        // fallback: renderButton click qilish
+        btnRef.current?.querySelector("[data-google-btn]")?.click();
+      }
     });
-  }, [gReady, label]);
+  }, [gReady]);
+
+  const label = t[labelKey] || t.google_btn;
 
   if (!GOOGLE_CLIENT_ID) {
     return (
       <button
         type="button"
         className={s.googleBtn}
-        disabled={true}
+        disabled
         style={{ opacity: 0.5, cursor: "not-allowed" }}
       >
         <GoogleIcon />
-        <span>Google bilan kirish (sozlanmagan)</span>
+        <span>{t.google_btn_disabled}</span>
       </button>
     );
   }
 
   return (
-    <div
+    <button
       ref={btnRef}
+      type="button"
       className={s.googleBtn}
-      style={{
-        minHeight: 44,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        opacity: disabled ? 0.6 : 1,
-        pointerEvents: disabled ? "none" : "auto",
-      }}
+      onClick={handleClick}
+      disabled={disabled || !gReady}
     >
-      {/* renderButton bu yerga Google tugmasini chizadi */}
-      {!gReady && (
-        <>
-          <GoogleIcon />
-          <span>{label || "Google bilan kirish"}</span>
-        </>
-      )}
-    </div>
+      <GoogleIcon />
+      <span>{gReady ? label : "..."}</span>
+    </button>
   );
 }
 
@@ -129,23 +115,24 @@ function OTPVerify({ email, onSuccess, onBack }) {
   const [resent, setResent] = useState(false);
   const [timer, setTimer] = useState(60);
   const { verifyOtp, resendOtp } = useAuth();
+  const { t } = useLang();
 
   useEffect(() => {
     if (timer <= 0) return;
-    const id = setTimeout(() => setTimer((t) => t - 1), 1000);
+    const id = setTimeout(() => setTimer((prev) => prev - 1), 1000);
     return () => clearTimeout(id);
   }, [timer]);
 
   async function handleVerify(e) {
     e.preventDefault();
-    if (otp.length !== 6) return setErr("6 xonali kodni kiriting");
+    if (otp.length !== 6) return setErr(t.otp_length_error);
     setErr("");
     setBusy(true);
     try {
       await verifyOtp(email, otp);
       onSuccess?.();
     } catch (ex) {
-      setErr(ex.response?.data?.error || "Tasdiqlash xatosi");
+      setErr(ex.response?.data?.error || t.otp_error);
     } finally {
       setBusy(false);
     }
@@ -159,7 +146,7 @@ function OTPVerify({ email, onSuccess, onBack }) {
       setResent(true);
       setTimer(60);
     } catch (ex) {
-      setErr(ex.response?.data?.error || "Yuborishda xato");
+      setErr(ex.response?.data?.error || t.otp_send_error);
     } finally {
       setBusy(false);
     }
@@ -175,12 +162,12 @@ function OTPVerify({ email, onSuccess, onBack }) {
           <LangSwitcher />
         </div>
         <div className={s.otpIcon}>📧</div>
-        <h1 className={s.title}>Emailni tasdiqlang</h1>
+        <h1 className={s.title}>{t.otp_title}</h1>
         <p className={s.sub}>
-          <strong>{email}</strong> manziliga 6 xonali kod yuborildi
+          <strong>{email}</strong> {t.otp_sent}
         </p>
         {err && <div className={s.error}>{err}</div>}
-        {resent && <div className={s.success}>✅ Yangi kod yuborildi!</div>}
+        {resent && <div className={s.success}>{t.otp_resent}</div>}
         <div className={s.form}>
           <input
             className={`${s.input} ${s.otpInput}`}
@@ -200,19 +187,21 @@ function OTPVerify({ email, onSuccess, onBack }) {
             onClick={handleVerify}
             disabled={busy || otp.length < 6}
           >
-            {busy ? "Tekshirilmoqda..." : "Tasdiqlash"}
+            {busy ? t.otp_verifying : t.otp_verify}
           </button>
         </div>
         <div className={s.otpFooter}>
           {timer > 0 ? (
-            <span className={s.timerText}>Qayta yuborish: {timer}s</span>
+            <span className={s.timerText}>
+              {t.otp_timer}: {timer}s
+            </span>
           ) : (
             <button
               className={s.linkBtn}
               onClick={handleResend}
               disabled={busy}
             >
-              Kodni qayta yuborish
+              {t.otp_resend}
             </button>
           )}
         </div>
@@ -221,7 +210,7 @@ function OTPVerify({ email, onSuccess, onBack }) {
           onClick={onBack}
           style={{ marginTop: "0.5rem" }}
         >
-          ← Orqaga
+          {t.otp_back}
         </button>
       </div>
     </div>
@@ -240,11 +229,11 @@ function SupportModal({ onClose }) {
     e.preventDefault();
     if (!form.message.trim()) return;
     if (!form.name.trim()) {
-      setErr("Ism kiritish shart");
+      setErr(t.support_name_required);
       return;
     }
     if (!form.email.trim()) {
-      setErr("Email kiritish shart");
+      setErr(t.support_email_required);
       return;
     }
     setErr("");
@@ -362,7 +351,7 @@ export function Login() {
         setVerifyEmail(data.email || form.username);
         setNeedsVerify(true);
       } else {
-        setErr(data?.error || t.error_generic || "Xatolik yuz berdi");
+        setErr(data?.error || t.error_generic);
       }
     } finally {
       setBusy(false);
@@ -376,7 +365,7 @@ export function Login() {
       await loginWithGoogle(credential);
       nav("/chat");
     } catch (ex) {
-      setErr(ex.response?.data?.error || "Google orqali kirishda xatolik");
+      setErr(ex.response?.data?.error || t.google_error);
     } finally {
       setBusy(false);
     }
@@ -406,13 +395,13 @@ export function Login() {
         {err && <div className={s.error}>{err}</div>}
 
         <GoogleButton
-          label="Google bilan kirish"
+          labelKey="google_btn"
           onCredential={handleGoogle}
           disabled={busy}
         />
 
         <div className={s.divider}>
-          <span>yoki</span>
+          <span>{t.divider_or}</span>
         </div>
 
         <div className={s.form}>
@@ -424,7 +413,7 @@ export function Login() {
               onChange={(e) =>
                 setForm((p) => ({ ...p, username: e.target.value }))
               }
-              placeholder="username yoki email"
+              placeholder={t.login_username_ph}
               required
               autoFocus
             />
@@ -438,7 +427,7 @@ export function Login() {
               onChange={(e) =>
                 setForm((p) => ({ ...p, password: e.target.value }))
               }
-              placeholder="••••••"
+              placeholder={t.login_password_ph}
               required
             />
           </label>
@@ -499,9 +488,7 @@ export function Register() {
         nav("/chat");
       }
     } catch (ex) {
-      setErr(
-        ex.response?.data?.error || t.error_generic || "Xatolik yuz berdi",
-      );
+      setErr(ex.response?.data?.error || t.error_generic);
     } finally {
       setBusy(false);
     }
@@ -514,7 +501,7 @@ export function Register() {
       await loginWithGoogle(credential);
       nav("/chat");
     } catch (ex) {
-      setErr(ex.response?.data?.error || "Google orqali kirishda xatolik");
+      setErr(ex.response?.data?.error || t.google_error);
     } finally {
       setBusy(false);
     }
@@ -544,13 +531,13 @@ export function Register() {
         {err && <div className={s.error}>{err}</div>}
 
         <GoogleButton
-          label="Google bilan ro'yxatdan o'tish"
+          labelKey="google_btn_register"
           onCredential={handleGoogle}
           disabled={busy}
         />
 
         <div className={s.divider}>
-          <span>yoki email bilan</span>
+          <span>{t.divider_or_email}</span>
         </div>
 
         <div className={s.form}>
@@ -579,7 +566,7 @@ export function Register() {
             />
           </label>
           <label className={s.label}>
-            Email manzil
+            Email
             <input
               className={s.input}
               type="email"
@@ -587,7 +574,7 @@ export function Register() {
               onChange={(e) =>
                 setForm((p) => ({ ...p, email: e.target.value }))
               }
-              placeholder="misol@gmail.com"
+              placeholder={t.register_email_ph}
               required
             />
           </label>
