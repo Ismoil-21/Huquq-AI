@@ -54,7 +54,7 @@ app.use(
 app.use(securityHeaders);
 
 /* ───── CORS ───── */
-const defaultOrigins = ["http://localhost:5173", "http://localhost:5174"];
+const defaultOrigins = ["http://localhost:5173", "http://localhost:5174", "https://huquq-ai-fpa2.onrender.com"];
 const frontendUrl = process.env.FRONTEND_URL;
 
 const allowedOrigins = [
