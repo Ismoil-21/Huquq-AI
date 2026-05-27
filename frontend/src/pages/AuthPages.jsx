@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLang } from "../context/LangContext";
@@ -8,7 +8,6 @@ import s from "./Auth.module.css";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
 
 // SVG ni alohida komponent qilib ajratamiz
 function GoogleIcon() {
