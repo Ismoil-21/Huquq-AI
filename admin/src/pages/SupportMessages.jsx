@@ -23,14 +23,16 @@ export default function SupportMessages() {
     try {
       setLoading(true);
       const { data } = await api.get("/support");
-      setMessages(data);
+      const messages = Array.isArray(data) ? data : [];
+      setMessages(messages);
       // Mark all pending messages as read
-      const pendingIds = data.filter(m => m.status === "pending" && !m.read).map(m => m._id);
+      const pendingIds = messages.filter(m => m.status === "pending" && !m.read).map(m => m._id);
       if (pendingIds.length > 0) {
         await Promise.all(pendingIds.map(id => api.patch(`/support/${id}`, { read: true })));
       }
     } catch (err) {
       console.error("Xabar yuklashda xatolik:", err);
+      setMessages([]);
     } finally {
       setLoading(false);
     }
@@ -55,12 +57,12 @@ export default function SupportMessages() {
     }
   }
 
-  const filtered = messages.filter(m => {
+  const filtered = Array.isArray(messages) ? messages.filter(m => {
     if (filter === "all") return true;
     return m.status === filter;
-  });
+  }) : [];
 
-  const pendingCount = messages.filter(m => m.status === "pending").length;
+  const pendingCount = Array.isArray(messages) ? messages.filter(m => m.status === "pending").length : 0;
 
   return (
     <div style={{ padding: "2rem" }}>
@@ -92,13 +94,13 @@ export default function SupportMessages() {
               cursor: "pointer"
             }}
           >
-            Barchasi ({messages.length})
+            Barchasi ({Array.isArray(messages) ? messages.length : 0})
           </button>
-          <button 
+          <button
             onClick={() => setFilter("pending")}
-            style={{ 
-              padding: "8px 16px", 
-              borderRadius: "8px", 
+            style={{
+              padding: "8px 16px",
+              borderRadius: "8px",
               border: filter === "pending" ? "2px solid var(--accent)" : "1px solid var(--border)",
               background: filter === "pending" ? "var(--accent-bg)" : "var(--bg)",
               color: "var(--text)",
@@ -107,18 +109,18 @@ export default function SupportMessages() {
           >
             Kutilmoqda ({pendingCount})
           </button>
-          <button 
+          <button
             onClick={() => setFilter("resolved")}
-            style={{ 
-              padding: "8px 16px", 
-              borderRadius: "8px", 
+            style={{
+              padding: "8px 16px",
+              borderRadius: "8px",
               border: filter === "resolved" ? "2px solid var(--accent)" : "1px solid var(--border)",
               background: filter === "resolved" ? "var(--accent-bg)" : "var(--bg)",
               color: "var(--text)",
               cursor: "pointer"
             }}
           >
-            Hal qilindi ({messages.filter(m => m.status === "resolved").length})
+            Hal qilindi ({Array.isArray(messages) ? messages.filter(m => m.status === "resolved").length : 0})
           </button>
         </div>
       </div>

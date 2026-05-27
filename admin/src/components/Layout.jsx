@@ -49,10 +49,12 @@ export default function Layout() {
   async function loadPendingCount() {
     try {
       const { data } = await api.get("/support");
-      const unread = data.filter(m => m.status === "pending" && !m.read).length;
+      const messages = Array.isArray(data) ? data : [];
+      const unread = messages.filter(m => m.status === "pending" && !m.read).length;
       setPendingCount(unread);
     } catch (err) {
       console.error("Pending count error:", err);
+      setPendingCount(0);
     }
   }
 
