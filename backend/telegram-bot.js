@@ -20,7 +20,7 @@ const userLang  = new Map();
 // telegramUserId -> { userId, username }
 const verifiedUsers = new Map();
 
-const SITE_URL = process.env.SITE_URL || "https://huquq.uz";
+const SITE_URL = process.env.SITE_URL || "https://huquq-ai-rose.vercel.app/";
 
 const LANG_INSTRUCTION = {
   uz: "Javobni faqat o'zbek tilida yozing.",

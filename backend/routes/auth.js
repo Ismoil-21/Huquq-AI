@@ -82,39 +82,19 @@ router.post("/register", async (req, res) => {
       otpExpires:    expires,
     });
 
-    // Check if SMTP is configured
-    const smtpConfigured = process.env.SMTP_USER && process.env.SMTP_PASS;
-
-    if (smtpConfigured) {
-      try {
-        await sendOTPEmail(user.email, otp, user.fullName || user.username);
-        return res.status(201).json({
-          message:    "Tasdiqlash kodi emailingizga yuborildi",
-          email:      user.email,
-          needsVerification: true,
-        });
-      } catch (mailErr) {
-        console.error("Email yuborishda xato:", mailErr.message);
-        await User.deleteOne({ _id: user._id });
-        return res.status(500).json({ error: "Email yuborishda xatolik yuz berdi. Email manzilingizni tekshiring." });
-      }
-    } else {
-      // Skip email verification if SMTP not configured
-      user.emailVerified = true;
-      user.otpCode = null;
-      user.otpExpires = null;
-      await user.save();
-
-      const verifySource = req.headers["x-app-platform"] === "mobile" ? "mobile" : "web";
-      await logLogin(req, user._id, verifySource);
-
-      const token = signToken(user);
-      return res.status(201).json({
-        message: "Ro'yxatdan muvaffaqiyatli o'tdingiz!",
-        token,
-        user: userPublic(user),
-      });
+    try {
+      await sendOTPEmail(user.email, otp, user.fullName || user.username);
+    } catch (mailErr) {
+      console.error("Email yuborishda xato:", mailErr.message);
+      await User.deleteOne({ _id: user._id });
+      return res.status(500).json({ error: "Email yuborishda xatolik yuz berdi. Email manzilingizni tekshiring." });
     }
+
+    return res.status(201).json({
+      message:    "Tasdiqlash kodi emailingizga yuborildi",
+      email:      user.email,
+      needsVerification: true,
+    });
   } catch (err) {
     console.error("register error:", err.message);
     if (err.code === 11000) {
