@@ -75,7 +75,7 @@ function LoginRequired({ onClose }) {
         border: "1px solid var(--border,#e8e3dc)",
       }}>
         <div style={{ fontSize: "0.82rem", color: "var(--text-secondary,#666)", lineHeight: 1.8 }}>
-          ✅ Kuniga <strong>10 ta</strong> bepul savol<br/>
+          ✅ Kuniga <strong>20 ta</strong> bepul savol<br/>
           ✅ Barcha suhbatlar saqlanadi<br/>
           ✅ O'zbek, Rus, Ingliz tillarida<br/>
           ✅ 24/7 ishlaydi
