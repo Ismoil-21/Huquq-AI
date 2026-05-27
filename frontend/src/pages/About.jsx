@@ -5,12 +5,12 @@ import shared from "../styles/site.module.css";
 import s from "./About.module.css";
 
 const LAWS = [
-  { code: "Mehnat Kodeksi", items: ["Ish haqi (100-102)", "Bo'shatish (154-157)", "Ta'til (182)", "Nizolar (220)"] },
-  { code: "Oila Kodeksi", items: ["Aliment (99-110)", "Ajralish (37-40)", "Bola egaligi (73)"] },
-  { code: "Fuqarolik Kodeksi", items: ["Meros (1135-1260)", "Mulk huquqi", "Vasiyatnoma (1151)"] },
-  { code: "Yer Kodeksi", items: ["Egalik turlari (16)", "Ijara (28)", "Tortib olish (34)"] },
-  { code: "Jinoyat Kodeksi", items: ["Firibgarlik (168)", "Korrupsiya (210-212)", "Zo'ravonlik (110)"] },
-  { code: "Iste'molchi Huquqlari", items: ["Qaytarish (14-m)", "Kafolat (19-m)", "Xizmat nuqsoni (16)"] },
+  { code: "laws_labor", items: "laws_labor_items" },
+  { code: "laws_family", items: "laws_family_items" },
+  { code: "laws_civil", items: "laws_civil_items" },
+  { code: "laws_land", items: "laws_land_items" },
+  { code: "laws_criminal", items: "laws_criminal_items" },
+  { code: "laws_consumer", items: "laws_consumer_items" },
 ];
 
 export default function About() {
@@ -86,9 +86,9 @@ export default function About() {
           <div className={s.lawGrid}>
             {LAWS.map((l) => (
               <div key={l.code} className={s.lawCard}>
-                <h3 className={s.lawTitle}>{l.code}</h3>
+                <h3 className={s.lawTitle}>{t[l.code]}</h3>
                 <ul className={s.lawList}>
-                  {l.items.map((i) => (
+                  {t[l.items].map((i) => (
                     <li key={i}>{i}</li>
                   ))}
                 </ul>

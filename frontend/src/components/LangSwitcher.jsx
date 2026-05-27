@@ -9,7 +9,7 @@ const LANGS = [
   { code: "en", flag: "🇬🇧", name: "English", short: "EN" },
 ];
 
-export default function LangSwitcher({ dark = false, compact = false, className = "" }) {
+export default function LangSwitcher({ dark = false, compact = false, dropUp = false, className = "" }) {
   const { lang, changeLang } = useLang();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
@@ -42,7 +42,7 @@ export default function LangSwitcher({ dark = false, compact = false, className 
   return (
     <div
       ref={wrapRef}
-      className={`${s.wrap} ${dark ? s.dark : ""} ${compact ? s.compact : ""} ${open ? s.open : ""} ${className}`}
+      className={`${s.wrap} ${dark ? s.dark : ""} ${compact ? s.compact : ""} ${dropUp ? s.dropUp : ""} ${open ? s.open : ""} ${className}`}
     >
       <button
         type="button"

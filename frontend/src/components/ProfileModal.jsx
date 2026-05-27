@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useLang } from "../context/LangContext";
 import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
 
 export default function ProfileModal({ onClose }) {
   const { user, logout } = useAuth();
+  const { t } = useLang();
   const navigate = useNavigate();
   const overlayRef = useRef(null);
 
@@ -48,17 +50,17 @@ export default function ProfileModal({ onClose }) {
 
   async function handleProfileSave(e) {
     e.preventDefault();
-    if (!username.trim()) return setProfileMsg({ type: "error", text: "Username bo'sh bo'lishi mumkin emas" });
+    if (!username.trim()) return setProfileMsg({ type: "error", text: t.profile_username_required });
     setProfileBusy(true);
     setProfileMsg({ type: "", text: "" });
     try {
       const { data } = await api.put("/auth/profile", { fullName, username: username.trim().toLowerCase() });
       const saved = JSON.parse(localStorage.getItem("user") || "{}");
       localStorage.setItem("user", JSON.stringify({ ...saved, ...data.user }));
-      setProfileMsg({ type: "success", text: "Profil yangilandi ✓" });
+      setProfileMsg({ type: "success", text: t.profile_updated + " ✓" });
       setTimeout(() => window.location.reload(), 900);
     } catch (err) {
-      setProfileMsg({ type: "error", text: err.response?.data?.error || "Xatolik yuz berdi" });
+      setProfileMsg({ type: "error", text: err.response?.data?.error || t.error_generic });
     } finally {
       setProfileBusy(false);
     }
@@ -66,16 +68,16 @@ export default function ProfileModal({ onClose }) {
 
   async function handlePasswordChange(e) {
     e.preventDefault();
-    if (newPassword !== confirmPassword) return setPasswordMsg({ type: "error", text: "Yangi parollar mos kelmadi" });
-    if (newPassword.length < 6) return setPasswordMsg({ type: "error", text: "Parol kamida 6 ta belgi bo'lsin" });
+    if (newPassword !== confirmPassword) return setPasswordMsg({ type: "error", text: t.password_mismatch });
+    if (newPassword.length < 6) return setPasswordMsg({ type: "error", text: t.password_min_length });
     setPasswordBusy(true);
     setPasswordMsg({ type: "", text: "" });
     try {
       const { data } = await api.put("/auth/change-password", { currentPassword, newPassword });
-      setPasswordMsg({ type: "success", text: data.message || "Parol o'zgartirildi ✓" });
+      setPasswordMsg({ type: "success", text: data.message || t.password_changed + " ✓" });
       setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
     } catch (err) {
-      setPasswordMsg({ type: "error", text: err.response?.data?.error || "Xatolik yuz berdi" });
+      setPasswordMsg({ type: "error", text: err.response?.data?.error || t.error_generic });
     } finally {
       setPasswordBusy(false);
     }
@@ -84,16 +86,16 @@ export default function ProfileModal({ onClose }) {
   async function handleTelegramLink(e) {
     e.preventDefault();
     const id = telegramId.trim();
-    if (!id) return setTelegramMsg({ type: "error", text: "Telegram ID kiriting" });
-    if (!/^\d+$/.test(id)) return setTelegramMsg({ type: "error", text: "Telegram ID faqat raqamlardan iborat" });
+    if (!id) return setTelegramMsg({ type: "error", text: t.telegram_id_required });
+    if (!/^\d+$/.test(id)) return setTelegramMsg({ type: "error", text: t.telegram_id_numeric });
     setTelegramBusy(true);
     setTelegramMsg({ type: "", text: "" });
     try {
       const { data } = await api.post("/auth/link-telegram", { telegramId: id });
       setTelegramStatus({ telegramId: id, telegramVerified: true });
-      setTelegramMsg({ type: "success", text: "Telegram muvaffaqiyatli bog'landi ✓" });
+      setTelegramMsg({ type: "success", text: t.telegram_linked });
     } catch (err) {
-      setTelegramMsg({ type: "error", text: err.response?.data?.error || "Xatolik yuz berdi" });
+      setTelegramMsg({ type: "error", text: err.response?.data?.error || t.error_generic });
     } finally {
       setTelegramBusy(false);
     }
@@ -108,9 +110,9 @@ export default function ProfileModal({ onClose }) {
   const isGoogle = user?.authProvider === "google";
 
   const tabs = [
-    { id: "profile", label: "👤 Profil" },
-    { id: "password", label: "🔒 Parol" },
-    { id: "telegram", label: "✈️ Telegram" },
+    { id: "profile", label: t.profile_tab },
+    { id: "password", label: t.password_tab },
+    { id: "telegram", label: t.telegram_tab },
   ];
 
   return (
@@ -217,16 +219,16 @@ export default function ProfileModal({ onClose }) {
           {tab === "profile" && (
             <form onSubmit={handleProfileSave} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               {profileMsg.text && <Alert type={profileMsg.type}>{profileMsg.text}</Alert>}
-              <Field label="To'liq ism">
-                <Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Ismingizni kiriting" maxLength={100} />
+              <Field label={t.profile_full_name}>
+                <Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder={t.profile_full_name_ph} maxLength={100} />
               </Field>
-              <Field label="Username">
-                <Input value={username} onChange={e => setUsername(e.target.value.toLowerCase())} placeholder="username" minLength={3} maxLength={30} />
+              <Field label={t.profile_username_label}>
+                <Input value={username} onChange={e => setUsername(e.target.value.toLowerCase())} placeholder={t.profile_username_ph} minLength={3} maxLength={30} />
               </Field>
-              <Field label="Email">
+              <Field label={t.profile_email_label}>
                 <Input value={user?.email || ""} disabled style={{ opacity: 0.6, cursor: "not-allowed" }} />
               </Field>
-              <Btn type="submit" disabled={profileBusy}>{profileBusy ? "Saqlanmoqda…" : "Saqlash"}</Btn>
+              <Btn type="submit" disabled={profileBusy}>{profileBusy ? t.profile_saving : t.profile_save}</Btn>
             </form>
           )}
 
@@ -236,20 +238,20 @@ export default function ProfileModal({ onClose }) {
               {passwordMsg.text && <Alert type={passwordMsg.type}>{passwordMsg.text}</Alert>}
               {isGoogle ? (
                 <p style={{ color: "#888", fontSize: "0.9rem", textAlign: "center" }}>
-                  Google orqali kirgan hisobda parol o'zgartirib bo'lmaydi.
+                  {t.google_password_warning}
                 </p>
               ) : (
                 <>
-                  <Field label="Joriy parol">
-                    <Input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} placeholder="Hozirgi parolingiz" required />
+                  <Field label={t.password_current}>
+                    <Input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} placeholder={t.password_current_ph} required />
                   </Field>
-                  <Field label="Yangi parol">
-                    <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Kamida 6 ta belgi" minLength={6} required />
+                  <Field label={t.password_new}>
+                    <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder={t.password_new_ph} minLength={6} required />
                   </Field>
-                  <Field label="Yangi parolni tasdiqlang">
-                    <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Yangi parolni takrorlang" required />
+                  <Field label={t.password_confirm}>
+                    <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder={t.password_confirm_ph} required />
                   </Field>
-                  <Btn type="submit" disabled={passwordBusy}>{passwordBusy ? "O'zgartirilmoqda…" : "Parolni o'zgartirish"}</Btn>
+                  <Btn type="submit" disabled={passwordBusy}>{passwordBusy ? t.password_changing : t.password_change}</Btn>
                 </>
               )}
             </form>
@@ -323,7 +325,7 @@ export default function ProfileModal({ onClose }) {
                 borderRadius: 8, fontSize: "0.875rem",
                 cursor: "pointer", fontWeight: 500,
               }}
-            >🚪 Chiqish</button>
+            >{t.logout}</button>
           </div>
         </div>
       </div>

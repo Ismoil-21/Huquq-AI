@@ -111,6 +111,12 @@
   transform-origin: top right;
 }
 
+.dropUp .dropdown {
+  top: auto;
+  bottom: calc(100% + 8px);
+  transform-origin: bottom right;
+}
+
 .dark .dropdown {
   background: var(--navy-mid);
   border-color: rgba(201, 149, 58, 0.25);

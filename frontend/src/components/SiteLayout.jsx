@@ -195,7 +195,7 @@ export default function SiteLayout() {
               </>
             )}
             <div className={s.mobileLang}>
-              <LangSwitcher dark className={langStyles.fullWidth} />
+              <LangSwitcher dark dropUp className={langStyles.fullWidth} />
             </div>
           </div>
         </>

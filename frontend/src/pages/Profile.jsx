@@ -33,7 +33,7 @@ export default function Profile() {
 
   async function handleProfileSave(e) {
     e.preventDefault();
-    if (!username.trim()) return setProfileMsg({ type: "error", text: "Username bo'sh bo'lishi mumkin emas" });
+    if (!username.trim()) return setProfileMsg({ type: "error", text: t.profile_username_required });
     setProfileBusy(true);
     setProfileMsg({ type: "", text: "" });
     try {
@@ -43,10 +43,10 @@ export default function Profile() {
       const updated = { ...saved, ...data.user };
       localStorage.setItem("user", JSON.stringify(updated));
       // AuthContext ni yangilash uchun page reload
-      setProfileMsg({ type: "success", text: data.message || "Profil yangilandi" });
+      setProfileMsg({ type: "success", text: data.message || t.profile_updated });
       setTimeout(() => window.location.reload(), 1000);
     } catch (err) {
-      setProfileMsg({ type: "error", text: err.response?.data?.error || "Xatolik yuz berdi" });
+      setProfileMsg({ type: "error", text: err.response?.data?.error || t.error_generic });
     } finally {
       setProfileBusy(false);
     }
@@ -55,21 +55,21 @@ export default function Profile() {
   async function handlePasswordChange(e) {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      return setPasswordMsg({ type: "error", text: "Yangi parollar mos kelmadi" });
+      return setPasswordMsg({ type: "error", text: t.password_mismatch });
     }
     if (newPassword.length < 6) {
-      return setPasswordMsg({ type: "error", text: "Parol kamida 6 ta belgi bo'lsin" });
+      return setPasswordMsg({ type: "error", text: t.password_min_length });
     }
     setPasswordBusy(true);
     setPasswordMsg({ type: "", text: "" });
     try {
       const { data } = await api.put("/auth/change-password", { currentPassword, newPassword });
-      setPasswordMsg({ type: "success", text: data.message || "Parol o'zgartirildi" });
+      setPasswordMsg({ type: "success", text: data.message || t.password_changed });
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
-      setPasswordMsg({ type: "error", text: err.response?.data?.error || "Xatolik yuz berdi" });
+      setPasswordMsg({ type: "error", text: err.response?.data?.error || t.error_generic });
     } finally {
       setPasswordBusy(false);
     }
@@ -127,7 +127,7 @@ export default function Profile() {
                 transition: "all .2s",
               }}
             >
-              {t_ === "profile" ? "👤 Profil" : "🔒 Parol"}
+              {t_ === "profile" ? t.profile_tab : t.password_tab}
             </button>
           ))}
         </div>
@@ -141,28 +141,28 @@ export default function Profile() {
               </div>
             )}
             <label className={s.label}>
-              To'liq ism
+              {t.profile_full_name}
               <input
                 className={s.input}
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="Ismingizni kiriting"
+                placeholder={t.profile_full_name_ph}
                 maxLength={100}
               />
             </label>
             <label className={s.label}>
-              Username
+              {t.profile_username_label}
               <input
                 className={s.input}
                 value={username}
                 onChange={(e) => setUsername(e.target.value.toLowerCase())}
-                placeholder="username"
+                placeholder={t.profile_username_ph}
                 minLength={3}
                 maxLength={30}
               />
             </label>
             <label className={s.label}>
-              Email
+              {t.profile_email_label}
               <input
                 className={s.input}
                 value={user.email || ""}
@@ -171,7 +171,7 @@ export default function Profile() {
               />
             </label>
             <button type="submit" className={s.btn} disabled={profileBusy}>
-              {profileBusy ? "Saqlanmoqda…" : "Saqlash"}
+              {profileBusy ? t.profile_saving : t.profile_save}
             </button>
           </form>
         )}
@@ -186,46 +186,46 @@ export default function Profile() {
             )}
             {user.authProvider === "google" ? (
               <p style={{ color: "var(--gray-600, #888)", fontSize: "0.9rem", textAlign: "center" }}>
-                Google orqali kirgan hisobda parol o'zgartirib bo'lmaydi.
+                {t.google_password_warning}
               </p>
             ) : (
               <>
                 <label className={s.label}>
-                  Joriy parol
+                  {t.password_current}
                   <input
                     type="password"
                     className={s.input}
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Hozirgi parolingiz"
+                    placeholder={t.password_current_ph}
                     required
                   />
                 </label>
                 <label className={s.label}>
-                  Yangi parol
+                  {t.password_new}
                   <input
                     type="password"
                     className={s.input}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Kamida 6 ta belgi"
+                    placeholder={t.password_new_ph}
                     minLength={6}
                     required
                   />
                 </label>
                 <label className={s.label}>
-                  Yangi parolni tasdiqlang
+                  {t.password_confirm}
                   <input
                     type="password"
                     className={s.input}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Yangi parolni takrorlang"
+                    placeholder={t.password_confirm_ph}
                     required
                   />
                 </label>
                 <button type="submit" className={s.btn} disabled={passwordBusy}>
-                  {passwordBusy ? "O'zgartirilmoqda…" : "Parolni o'zgartirish"}
+                  {passwordBusy ? t.password_changing : t.password_change}
                 </button>
               </>
             )}
@@ -247,7 +247,7 @@ export default function Profile() {
               fontWeight: 500,
             }}
           >
-            🚪 Chiqish
+            {t.logout}
           </button>
         </div>
       </div>

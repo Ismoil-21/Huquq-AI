@@ -122,7 +122,7 @@ export default function Home() {
             </div>
             {!user && (
               <p className={s.heroNote}>
-                🔒 AI maslahatdan foydalanish uchun ro'yxatdan o'ting
+                {t.hero_note}
               </p>
             )}
           </div>
