@@ -21,6 +21,14 @@ async function sendOTPEmail(toEmail, otp, fullName = "") {
   const transporter = createTransport();
   const name = fullName || "Foydalanuvchi";
 
+  console.log("SMTP Configuration:", {
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT,
+    secure: process.env.SMTP_SECURE,
+    user: process.env.SMTP_USER ? "***" : "NOT SET",
+    pass: process.env.SMTP_PASS ? "***" : "NOT SET",
+  });
+
   const html = `
 <!DOCTYPE html>
 <html>
@@ -59,13 +67,24 @@ async function sendOTPEmail(toEmail, otp, fullName = "") {
 </body>
 </html>`;
 
-  await transporter.sendMail({
-    from: `"Mening Huquqim" <${process.env.SMTP_USER}>`,
-    to:   toEmail,
-    subject: `Tasdiqlash kodi: ${otp} — Mening Huquqim`,
-    html,
-    text: `Tasdiqlash kodingiz: ${otp}\n\nKod 10 daqiqa ichida amal qiladi.`,
-  });
+  try {
+    const info = await transporter.sendMail({
+      from: `"Mening Huquqim" <${process.env.SMTP_USER}>`,
+      to:   toEmail,
+      subject: `Tasdiqlash kodi: ${otp} — Mening Huquqim`,
+      html,
+      text: `Tasdiqlash kodingiz: ${otp}\n\nKod 10 daqiqa ichida amal qiladi.`,
+    });
+    console.log("Email sent successfully:", info.messageId);
+  } catch (error) {
+    console.error("Email send error details:", {
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      message: error.message,
+    });
+    throw error;
+  }
 }
 
 async function sendPasswordResetEmail(toEmail, newPassword, fullName = "", adminUsername = "Admin") {
