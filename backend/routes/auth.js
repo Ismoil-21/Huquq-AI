@@ -218,11 +218,20 @@ router.post("/login", bruteForceGuard, async (req, res) => {
       return res.status(400).json({ error: "Bu hisob Google orqali yaratilgan. Google bilan kiring." });
     }
     if (!user.emailVerified) {
-      return res.status(403).json({
-        error:   "Email tasdiqlanmagan. Emailingizni tekshiring.",
-        needsVerification: true,
-        email:   user.email,
-      });
+      // Check if SMTP is configured
+      const smtpConfigured = process.env.SMTP_USER && process.env.SMTP_PASS;
+
+      if (smtpConfigured) {
+        return res.status(403).json({
+          error:   "Email tasdiqlanmagan. Emailingizni tekshiring.",
+          needsVerification: true,
+          email:   user.email,
+        });
+      } else {
+        // Allow login without verification if SMTP not configured
+        user.emailVerified = true;
+        await user.save();
+      }
     }
 
     const ok = await user.comparePassword(password);
