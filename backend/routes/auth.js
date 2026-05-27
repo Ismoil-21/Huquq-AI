@@ -76,27 +76,18 @@ router.post("/register", async (req, res) => {
       password,
       fullName:      fullName?.trim() || "",
       email:         email.trim().toLowerCase(),
-      emailVerified: false,
+      emailVerified: true,
       authProvider:  "local",
-      otpCode:       otp,
-      otpExpires:    expires,
     });
 
-    console.log("User created, sending OTP email to:", user.email);
+    const verifySource = req.headers["x-app-platform"] === "mobile" ? "mobile" : "web";
+    await logLogin(req, user._id, verifySource);
 
-    try {
-      await sendOTPEmail(user.email, otp, user.fullName || user.username);
-      console.log("OTP email sent successfully to:", user.email);
-    } catch (mailErr) {
-      console.error("Email yuborishda xato:", mailErr.message);
-      await User.deleteOne({ _id: user._id });
-      return res.status(500).json({ error: "Email yuborishda xatolik yuz berdi. Email manzilingizni tekshiring." });
-    }
-
+    const token = signToken(user);
     return res.status(201).json({
-      message:    "Tasdiqlash kodi emailingizga yuborildi",
-      email:      user.email,
-      needsVerification: true,
+      message: "Ro'yxatdan muvaffaqiyatli o'tdingiz!",
+      token,
+      user: userPublic(user),
     });
   } catch (err) {
     console.error("register error:", err.message);
@@ -219,25 +210,6 @@ router.post("/login", bruteForceGuard, async (req, res) => {
     if (user.isBlocked) return res.status(403).json({ error: "Sizning hisobingiz bloklangan. Admin bilan bog'laning." });
     if (user.authProvider === "google") {
       return res.status(400).json({ error: "Bu hisob Google orqali yaratilgan. Google bilan kiring." });
-    }
-    if (!user.emailVerified) {
-      console.log("User email not verified:", { email: user.email, username: user.username, emailVerified: user.emailVerified });
-      // Check if SMTP is configured
-      const smtpConfigured = process.env.SMTP_USER && process.env.SMTP_PASS;
-      console.log("SMTP configured:", smtpConfigured);
-
-      if (smtpConfigured) {
-        return res.status(403).json({
-          error:   "Email tasdiqlanmagan. Emailingizni tekshiring.",
-          needsVerification: true,
-          email:   user.email,
-        });
-      } else {
-        // Allow login without verification if SMTP not configured
-        console.log("SMTP not configured, auto-verifying user");
-        user.emailVerified = true;
-        await user.save();
-      }
     }
 
     const ok = await user.comparePassword(password);
