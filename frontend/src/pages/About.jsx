@@ -20,7 +20,7 @@ export default function About() {
   useEffect(() => {
     const fetchSiteContent = async () => {
       try {
-        const response = await fetch("/api/site/content");
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/site/content`);
         const data = await response.json();
         setSiteContent(data);
       } catch (error) {

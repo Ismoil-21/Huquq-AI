@@ -45,7 +45,7 @@ export default function Home() {
         else if (userAgent.includes("Edge")) browser = "Edge";
         
         // Send visitor data to backend
-        await fetch("/api/visitor/track", {
+        await fetch(`${import.meta.env.VITE_API_URL}/api/visitor/track`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -66,7 +66,7 @@ export default function Home() {
     // Fetch site content
     const fetchSiteContent = async () => {
       try {
-        const response = await fetch("/api/site/content");
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/site/content`);
         const data = await response.json();
         setSiteContent(data);
       } catch (error) {
