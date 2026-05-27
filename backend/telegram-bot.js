@@ -450,3 +450,4 @@ bot.on("polling_error", (err) => {
 
 // ── EXPORT ──
 module.exports = { bot, verifiedUsers };
+
