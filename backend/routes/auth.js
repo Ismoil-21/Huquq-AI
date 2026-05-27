@@ -82,8 +82,11 @@ router.post("/register", async (req, res) => {
       otpExpires:    expires,
     });
 
+    console.log("User created, sending OTP email to:", user.email);
+
     try {
       await sendOTPEmail(user.email, otp, user.fullName || user.username);
+      console.log("OTP email sent successfully to:", user.email);
     } catch (mailErr) {
       console.error("Email yuborishda xato:", mailErr.message);
       await User.deleteOne({ _id: user._id });
