@@ -129,6 +129,45 @@ async function findOrLinkUser(telegramUserId, telegramUsername) {
     console.error("DB check error:", err.message);
   }
 
+  // 3. Telegram username bilan pendingTelegramUsername tekshirish
+  // Agar user pendingTelegramUsername kiritgan bo'lsa va bot username bilan mos kelsa,
+  // avtomatik bog'lash
+  if (telegramUsername) {
+    try {
+      const normalizedTgUsername = telegramUsername.toLowerCase().replace("@", "");
+      const user = await User.findOne({
+        pendingTelegramUsername: normalizedTgUsername,
+        emailVerified: true,
+        telegramVerified: { $ne: true }
+      });
+      
+      if (user) {
+        // Ushbu Telegram ID boshqa hisobda ishlatilayaptimi?
+        const conflict = await User.findOne({
+          telegramId: tgId,
+          _id: { $ne: user._id },
+        });
+        if (conflict) {
+          console.log(`⚠️ Telegram ID ${tgId} already linked to another account`);
+          return null;
+        }
+
+        // Avtomatik bog'lash
+        user.telegramId = tgId;
+        user.telegramUsername = telegramUsername;
+        user.telegramVerified = true;
+        user.pendingTelegramUsername = null;
+        await user.save();
+        
+        verifiedUsers.set(tgId, user._id);
+        console.log(`✅ Auto-linked user ${user.username} via Telegram username: ${telegramUsername}`);
+        return user._id;
+      }
+    } catch (err) {
+      console.error("Auto-link by username error:", err.message);
+    }
+  }
+
   return null;
 }
 
