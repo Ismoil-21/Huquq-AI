@@ -1,9 +1,4 @@
 "use strict";
-const TelegramBot = require("node-telegram-bot-api");
-const { getLegalAdvice } = require("./services/legalAI");
-const { Chat, User } = require("./models");
-const { recordStat } = require("./services/stats");
-const { checkAndIncrement } = require("./middleware/usageLimit");
 
 if (!process.env.TELEGRAM_BOT_TOKEN) {
   console.log("ℹ️ TELEGRAM_BOT_TOKEN topilmadi — Telegram bot o'chirilgan");
@@ -11,14 +6,19 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
   return;
 }
 
+const TelegramBot = require("node-telegram-bot-api");
+const { getLegalAdvice } = require("./services/legalAI");
+const { Chat, User } = require("./models");
+const { recordStat } = require("./services/stats");
+
+const { checkAndIncrement } = require("./middleware/usageLimit");
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
 
-const sessions = new Map(); // tgUserId -> { messages, sessionId }
-const userLang = new Map(); // tgUserId -> "uz"|"ru"|"en"
-const verifiedUsers = new Map(); // tgUserId -> user._id (ObjectId)
+const sessions  = new Map();
+const userLang  = new Map();
 
-// Deep link handler ishlamoqda ekanligi — oddiy /start ni bloklaymiz
-const pendingDeepLink = new Set();
+// telegramUserId -> { userId, username }
+const verifiedUsers = new Map();
 
 const SITE_URL = process.env.SITE_URL || "https://huquq-ai-rose.vercel.app/";
 
@@ -42,25 +42,17 @@ const tg = {
     lang_choose: "🌐 Tilni tanlang / Choose language / Выберите язык:",
     lang_set: "✅ Til o'zgartirildi: O'zbek",
     categories: {
-      "💼 Mehnat huquqi":
-        "Mehnat bo'yicha savolingizni yozing.\nMasalan: Maosh 2 oy berilmadi",
-      "👨‍👩‍👧 Oila huquqi":
-        "Oila masalasi bo'yicha yozing.\nMasalan: Aliment olish uchun nima qilaman?",
-      "🏠 Meros va mulk":
-        "Meros bo'yicha yozing.\nMasalan: Otam vafot etdi, uyni qanday olamiz?",
-      "🌾 Yer masalalari":
-        "Yer masalasi bo'yicha yozing.\nMasalan: Yerimni noqonuniy olishmoqda",
-      "🛒 Iste'molchi":
-        "Iste'molchi huquqi bo'yicha yozing.\nMasalan: Sifatsiz telefon sotishdi",
-      "⚖️ Jinoyat huquqi":
-        "Jinoyat bo'yicha yozing.\nMasalan: Menga firibgarlik qilishdi",
+      "💼 Mehnat huquqi": "Mehnat bo'yicha savolingizni yozing.\nMasalan: Maosh 2 oy berilmadi",
+      "👨‍👩‍👧 Oila huquqi": "Oila masalasi bo'yicha yozing.\nMasalan: Aliment olish uchun nima qilaman?",
+      "🏠 Meros va mulk": "Meros bo'yicha yozing.\nMasalan: Otam vafot etdi, uyni qanday olamiz?",
+      "🌾 Yer masalalari": "Yer masalasi bo'yicha yozing.\nMasalan: Yerimni noqonuniy olishmoqda",
+      "🛒 Iste'molchi": "Iste'molchi huquqi bo'yicha yozing.\nMasalan: Sifatsiz telefon sotishdi",
+      "⚖️ Jinoyat huquqi": "Jinoyat bo'yicha yozing.\nMasalan: Menga firibgarlik qilishdi",
     },
     btn_new: "🔄 Yangi savol",
     btn_about: "ℹ️ Bot haqida",
-    register_btn: `✅ Bepul ro'yxatdan o'tish →`,
-    linked:
-      "✅ Hisobingiz muvaffaqiyatli bog'landi! Endi AI maslahatdan foydalanishingiz mumkin.\n\nSavolingizni yozing!",
-    already_linked: "✅ Hisobingiz allaqachon bog'langan. Savolingizni yozing!",
+    register_btn: `🌐 Ro'yxatdan o'tish → ${SITE_URL}/register`,
+    linked: "✅ Hisobingiz muvaffaqiyatli bog'landi! Endi AI maslahatdan foydalanishingiz mumkin.\n\nSavolingizni yozing!",
   },
   ru: {
     welcome: `🏛️ Добро пожаловать в бот Мои Права!\n\nЯ AI советник по законодательству Узбекистана.\n\nОпишите вашу юридическую проблему — отвечу! ✅`,
@@ -74,25 +66,16 @@ const tg = {
     lang_choose: "🌐 Tilni tanlang / Choose language / Выберите язык:",
     lang_set: "✅ Язык изменён: Русский",
     categories: {
-      "💼 Mehnat huquqi":
-        "Напишите вопрос по трудовому праву.\nНапример: 2 месяца не платят зарплату",
-      "👨‍👩‍👧 Oila huquqi":
-        "Напишите по семейному праву.\nНапример: Как получить алименты?",
-      "🏠 Meros va mulk":
-        "Напишите по наследству.\nНапример: Отец умер, как поделить имущество?",
-      "🌾 Yer masalalari":
-        "Напишите по земельному вопросу.\nНапример: Незаконно забирают мой участок",
-      "🛒 Iste'molchi":
-        "Напишите по правам потребителей.\nНапример: Продали некачественный телефон",
-      "⚖️ Jinoyat huquqi":
-        "Напишите по уголовному праву.\nНапример: Меня обманули мошенники",
+      "💼 Mehnat huquqi": "Напишите вопрос по трудовому праву.\nНапример: 2 месяца не платят зарплату",
+      "👨‍👩‍👧 Oila huquqi": "Напишите по семейному праву.\nНапример: Как получить алименты?",
+      "🏠 Meros va mulk": "Напишите по наследству.\nНапример: Отец умер, как поделить имущество?",
+      "🌾 Yer masalalari": "Напишите по земельному вопросу.\nНапример: Незаконно забирают мой участок",
+      "🛒 Iste'molchi": "Напишите по правам потребителей.\nНапример: Продали некачественный телефон",
+      "⚖️ Jinoyat huquqi": "Напишите по уголовному праву.\nНапример: Меня обманули мошенники",
     },
     btn_new: "🔄 Новый вопрос",
     btn_about: "ℹ️ О боте",
-    register_btn: `✅ Зарегистрироваться бесплатно →`,
-    linked:
-      "✅ Аккаунт успешно привязан! Теперь вы можете использовать AI консультант.\n\nЗадайте вопрос!",
-    already_linked: "✅ Аккаунт уже привязан. Задайте вопрос!",
+    linked: "✅ Аккаунт успешно привязан! Теперь вы можете использовать AI консультант.\n\nЗадайте вопрос!",
   },
   en: {
     welcome: `🏛️ Welcome to My Rights bot!\n\nI am an AI advisor on Uzbekistan legislation.\n\nDescribe your legal issue — I'll answer! ✅`,
@@ -106,25 +89,16 @@ const tg = {
     lang_choose: "🌐 Tilni tanlang / Choose language / Выберите язык:",
     lang_set: "✅ Language changed: English",
     categories: {
-      "💼 Mehnat huquqi":
-        "Write your labor law question.\nE.g.: Salary not paid for 2 months",
-      "👨‍👩‍👧 Oila huquqi":
-        "Write your family law question.\nE.g.: How do I get alimony?",
-      "🏠 Meros va mulk":
-        "Write your inheritance question.\nE.g.: Father passed away, how to divide the estate?",
-      "🌾 Yer masalalari":
-        "Write your land question.\nE.g.: My land plot is being illegally seized",
-      "🛒 Iste'molchi":
-        "Write your consumer rights question.\nE.g.: I was sold a defective phone",
-      "⚖️ Jinoyat huquqi":
-        "Write your criminal law question.\nE.g.: I was defrauded",
+      "💼 Mehnat huquqi": "Write your labor law question.\nE.g.: Salary not paid for 2 months",
+      "👨‍👩‍👧 Oila huquqi": "Write your family law question.\nE.g.: How do I get alimony?",
+      "🏠 Meros va mulk": "Write your inheritance question.\nE.g.: Father passed away, how to divide the estate?",
+      "🌾 Yer masalalari": "Write your land question.\nE.g.: My land plot is being illegally seized",
+      "🛒 Iste'molchi": "Write your consumer rights question.\nE.g.: I was sold a defective phone",
+      "⚖️ Jinoyat huquqi": "Write your criminal law question.\nE.g.: I was defrauded",
     },
     btn_new: "🔄 New question",
     btn_about: "ℹ️ About bot",
-    register_btn: `✅ Register for free →`,
-    linked:
-      "✅ Account successfully linked! You can now use the AI advisor.\n\nAsk a question!",
-    already_linked: "✅ Account already linked. Ask a question!",
+    linked: "✅ Account successfully linked! You can now use the AI advisor.\n\nAsk a question!",
   },
 };
 
@@ -135,27 +109,24 @@ function tr(userId) {
   return tg[getLang(userId)] || tg.uz;
 }
 
-// ── CHECK / LINK USER ─────────────────────────────────────────
-// FIX: emailVerified sharti olib tashlandi — telegramId bo'yicha topadi
+// ── CHECK IF USER IS REGISTERED ON WEBSITE ──────────────────
+// Yangi logika: telegramId bo'yicha YOKI saytda ro'yxatdan o'tgan
+// bo'lsa, Telegram ID ni avtomatik bog'laydi
 async function findOrLinkUser(telegramUserId, telegramUsername) {
   const tgId = String(telegramUserId);
 
   // 1. In-memory cache
   if (verifiedUsers.has(tgId)) return verifiedUsers.get(tgId);
 
-  // 2. DB dan telegramId bilan qidirish
+  // 2. DB da telegramId bilan bog'langan user bormi?
   try {
-    const user = await User.findOne({ telegramId: tgId });
+    let user = await User.findOne({ telegramId: tgId, emailVerified: true });
     if (user) {
       verifiedUsers.set(tgId, user._id);
-      // telegramUsername yangilangan bo'lsa saqlaymiz
-      if (telegramUsername && user.telegramUsername !== telegramUsername) {
-        User.findByIdAndUpdate(user._id, { telegramUsername }).catch(() => {});
-      }
       return user._id;
     }
   } catch (err) {
-    console.error("DB findOrLinkUser error:", err.message);
+    console.error("DB check error:", err.message);
   }
 
   return null;
@@ -165,31 +136,11 @@ async function findOrLinkUser(telegramUserId, telegramUsername) {
 function mainMenu(userId) {
   const lang = getLang(userId);
   const labels = {
-    uz: [
-      ["💼 Mehnat huquqi", "👨‍👩‍👧 Oila huquqi"],
-      ["🏠 Meros va mulk", "🌾 Yer masalalari"],
-      ["🛒 Iste'molchi", "⚖️ Jinoyat huquqi"],
-      ["🔄 Yangi savol", "ℹ️ Bot haqida"],
-    ],
-    ru: [
-      ["💼 Mehnat huquqi", "👨‍👩‍👧 Oila huquqi"],
-      ["🏠 Meros va mulk", "🌾 Yer masalalari"],
-      ["🛒 Iste'molchi", "⚖️ Jinoyat huquqi"],
-      ["🔄 Новый вопрос", "ℹ️ О боте"],
-    ],
-    en: [
-      ["💼 Mehnat huquqi", "👨‍👩‍👧 Oila huquqi"],
-      ["🏠 Meros va mulk", "🌾 Yer masalalari"],
-      ["🛒 Iste'molchi", "⚖️ Jinoyat huquqi"],
-      ["🔄 New question", "ℹ️ About bot"],
-    ],
+    uz: [["💼 Mehnat huquqi","👨‍👩‍👧 Oila huquqi"],["🏠 Meros va mulk","🌾 Yer masalalari"],["🛒 Iste'molchi","⚖️ Jinoyat huquqi"],["🔄 Yangi savol","ℹ️ Bot haqida"]],
+    ru: [["💼 Mehnat huquqi","👨‍👩‍👧 Oila huquqi"],["🏠 Meros va mulk","🌾 Yer masalalari"],["🛒 Iste'molchi","⚖️ Jinoyat huquqi"],["🔄 Новый вопрос","ℹ️ О боте"]],
+    en: [["💼 Mehnat huquqi","👨‍👩‍👧 Oila huquqi"],["🏠 Meros va mulk","🌾 Yer masalalari"],["🛒 Iste'molchi","⚖️ Jinoyat huquqi"],["🔄 New question","ℹ️ About bot"]],
   };
-  return {
-    reply_markup: {
-      keyboard: labels[lang] || labels.uz,
-      resize_keyboard: true,
-    },
-  };
+  return { reply_markup: { keyboard: labels[lang] || labels.uz, resize_keyboard: true } };
 }
 
 function registerKeyboard(lang) {
@@ -212,7 +163,7 @@ function registerKeyboard(lang) {
 const langKeyboard = {
   reply_markup: {
     inline_keyboard: [
-      [{ text: "🇺🇿 O'zbek", callback_data: "lang_uz" }],
+      [{ text: "🇺🇿 O'zbek",  callback_data: "lang_uz" }],
       [{ text: "🇷🇺 Русский", callback_data: "lang_ru" }],
       [{ text: "🇬🇧 English", callback_data: "lang_en" }],
     ],
@@ -222,31 +173,21 @@ const langKeyboard = {
 // ── HELPERS ────────────────────────────────────────────────────
 function getSession(userId) {
   if (!sessions.has(userId)) {
-    sessions.set(userId, {
-      messages: [],
-      sessionId: `tg_${userId}_${Date.now()}`,
-    });
+    sessions.set(userId, { messages: [], sessionId: `tg_${userId}_${Date.now()}` });
   }
   return sessions.get(userId);
 }
 
 async function safeSend(chatId, text, options = {}) {
   try {
-    return await bot.sendMessage(chatId, text, {
-      parse_mode: "HTML",
-      ...options,
-    });
+    return await bot.sendMessage(chatId, text, { parse_mode: "HTML", ...options });
   } catch (err) {
     if (err.response?.body?.error_code === 403) {
       console.log(`🚫 User blocked bot: ${chatId}`);
       return;
     }
     try {
-      return await bot.sendMessage(
-        chatId,
-        text.replace(/<[^>]*>/g, ""),
-        options,
-      );
+      return await bot.sendMessage(chatId, text.replace(/<[^>]*>/g, ""), options);
     } catch {
       console.error("Telegram send error:", err.message);
     }
@@ -259,93 +200,13 @@ async function sendNotRegistered(chatId, tgUserId) {
   await safeSend(chatId, T.not_registered, registerKeyboard(lang));
 }
 
-// ── DEEP LINK: /start link_<token> ─────────────────────────────
-// BUG FIX: Bu handler AVVAL ishlashi kerak — /start$ handler bloklanadi
-bot.onText(/\/start link_([a-f0-9]+)/, async (msg, match) => {
-  const tgUserId = msg.from.id;
-  const tgUsername = msg.from.username || null;
-  const chatId = msg.chat.id;
-  const token = match[1];
-
-  // Oddiy /start handler ni bu so'rov uchun bloklaymiz
-  pendingDeepLink.add(tgUserId);
-  setTimeout(() => pendingDeepLink.delete(tgUserId), 3000);
-
-  // Til yo'q bo'lsa default uz
-  if (!userLang.has(tgUserId)) {
-    userLang.set(tgUserId, "uz");
-  }
-
-  const lang = getLang(tgUserId);
-  const T = tg[lang] || tg.uz;
-
-  try {
-    // Bu tg_user allaqachon bog'langanmi?
-    const existingUser = await User.findOne({ telegramId: String(tgUserId) });
-    if (existingUser) {
-      verifiedUsers.set(String(tgUserId), existingUser._id);
-      sessions.delete(tgUserId);
-      return safeSend(chatId, T.already_linked || T.linked, mainMenu(tgUserId));
-    }
-
-    // Token bo'yicha user topish
-    const user = await User.findOne({
-      otpCode: `tglink_${token}`,
-      otpExpires: { $gt: new Date() },
-    });
-
-    if (!user) {
-      // Token eskirgan — lekin user telegramId bilan qidiramiz (ehtimol boshqa session)
-      return safeSend(
-        chatId,
-        "❌ Havola muddati tugagan yoki noto'g'ri.\n\nSaytga kirib qayta bog'lash havolasini oling: " +
-          SITE_URL +
-          "/profile",
-      );
-    }
-
-    // Ushbu Telegram ID boshqa hisobda ishlatilayaptimi?
-    const conflict = await User.findOne({
-      telegramId: String(tgUserId),
-      _id: { $ne: user._id },
-    });
-    if (conflict) {
-      return safeSend(
-        chatId,
-        "⚠️ Bu Telegram hisob allaqachon boshqa akkountga bog'langan.",
-      );
-    }
-
-    // Bog'lash
-    user.telegramId = String(tgUserId);
-    user.telegramUsername = tgUsername;
-    user.telegramVerified = true;
-    user.otpCode = null;
-    user.otpExpires = null;
-    await user.save();
-
-    verifiedUsers.set(String(tgUserId), user._id);
-    sessions.delete(tgUserId);
-
-    await safeSend(chatId, T.linked, mainMenu(tgUserId));
-  } catch (err) {
-    console.error("Deep link error:", err.message);
-    await safeSend(chatId, "❌ Xatolik yuz berdi. Qayta urinib ko'ring.");
-  }
-});
-
 // ── /start ─────────────────────────────────────────────────────
-bot.onText(/^\/start$/, async (msg) => {
-  const tgUserId = msg.from.id;
-  const chatId = msg.chat.id;
+bot.onText(/\/start/, async (msg) => {
+  const tgUserId  = msg.from.id;
+  const chatId    = msg.chat.id;
   const tgUsername = msg.from.username || null;
-
-  // BUG FIX: Deep link handler ishlayotgan bo'lsa bu handlerni o'tkazib yuborish
-  if (pendingDeepLink.has(tgUserId)) return;
-
   sessions.delete(tgUserId);
 
-  // Til tanlash (birinchi marta)
   if (!userLang.has(tgUserId)) {
     await safeSend(chatId, tg.uz.lang_choose, langKeyboard);
     return;
@@ -363,7 +224,7 @@ bot.onText(/^\/start$/, async (msg) => {
 // ── /yangi ─────────────────────────────────────────────────────
 bot.onText(/\/yangi/, async (msg) => {
   const tgUserId = msg.from.id;
-  const chatId = msg.chat.id;
+  const chatId   = msg.chat.id;
 
   const userId = await findOrLinkUser(tgUserId, msg.from.username);
   if (!userId) {
@@ -386,8 +247,8 @@ bot.onText(/\/lang/, async (msg) => {
 // ── LANGUAGE CALLBACK ──────────────────────────────────────────
 bot.on("callback_query", async (query) => {
   const tgUserId = query.from.id;
-  const data = query.data;
-  const chatId = query.message.chat.id;
+  const data     = query.data;
+  const chatId   = query.message.chat.id;
 
   const langMap = { lang_uz: "uz", lang_ru: "ru", lang_en: "en" };
   if (langMap[data]) {
@@ -397,9 +258,7 @@ bot.on("callback_query", async (query) => {
     await safeSend(chatId, tg[lang].lang_set);
 
     const userId = await findOrLinkUser(tgUserId, query.from.username);
-    if (!userId) {
-      return sendNotRegistered(chatId, tgUserId);
-    }
+    if (!userId) return sendNotRegistered(chatId, tgUserId);
     return safeSend(chatId, tg[lang].welcome, mainMenu(tgUserId));
   }
 });
@@ -409,24 +268,21 @@ bot.on("message", async (msg) => {
   if (!msg.text && !msg.photo && !msg.document) return;
   if (msg.text?.startsWith("/")) return;
 
-  const chatId = msg.chat.id;
-  const tgUserId = msg.from.id;
+  const chatId     = msg.chat.id;
+  const tgUserId   = msg.from.id;
   const tgUsername = msg.from.username || null;
-  const text =
-    msg.text ||
-    msg.caption ||
-    "Ushbu rasmni tahlil qilib, huquqiy maslahat bering.";
-  const T = tr(tgUserId);
+  const text       = msg.text || msg.caption || "Ushbu rasmni tahlil qilib, huquqiy maslahat bering.";
+  const T          = tr(tgUserId);
 
   // Navigation buttons
-  if (["🔄 Yangi savol", "🔄 Новый вопрос", "🔄 New question"].includes(text)) {
+  if (["🔄 Yangi savol","🔄 Новый вопрос","🔄 New question"].includes(text)) {
     const userId = await findOrLinkUser(tgUserId, tgUsername);
     if (!userId) return sendNotRegistered(chatId, tgUserId);
     sessions.delete(tgUserId);
     return safeSend(chatId, T.new_prompt, mainMenu(tgUserId));
   }
 
-  if (["ℹ️ Bot haqida", "ℹ️ О боте", "ℹ️ About bot"].includes(text)) {
+  if (["ℹ️ Bot haqida","ℹ️ О боте","ℹ️ About bot"].includes(text)) {
     return safeSend(chatId, T.about, mainMenu(tgUserId));
   }
 
@@ -444,33 +300,29 @@ bot.on("message", async (msg) => {
   }
 
   // ── AI ANSWER ──
+  // Limit tekshiruvi
   const limitResult = await checkAndIncrement(userId);
   if (limitResult) {
     const lang = getLang(tgUserId);
-    const timeLeft =
-      limitResult.timeLeft?.[lang] || limitResult.timeLeft?.uz || "24 soat";
-    const unblockStr =
-      limitResult.unblockAtStr?.[lang] || limitResult.unblockAtStr?.uz || "";
+    const timeLeft   = (limitResult.timeLeft?.[lang]   || limitResult.timeLeft?.uz   || "24 soat");
+    const unblockStr = (limitResult.unblockAtStr?.[lang] || limitResult.unblockAtStr?.uz || "");
     const limitMsgs = {
       uz: `⏳ <b>Kunlik limitingiz tugadi</b>\n\n📊 Bugun: <b>${limitResult.limit} ta</b> savol ishlatildi\n🔒 Ochilishi: <b>${unblockStr}</b> (${timeLeft} qoldi)\n\n🌐 <a href="${SITE_URL}">Ko'proq ma'lumot</a>`,
       ru: `⏳ <b>Дневной лимит исчерпан</b>\n\n📊 Сегодня: <b>${limitResult.limit}</b> вопросов использовано\n🔒 Откроется: <b>${unblockStr}</b> (осталось ${timeLeft})\n\n🌐 <a href="${SITE_URL}">Подробнее</a>`,
       en: `⏳ <b>Daily limit reached</b>\n\n📊 Today: <b>${limitResult.limit}</b> questions used\n🔒 Opens: <b>${unblockStr}</b> (${timeLeft} left)\n\n🌐 <a href="${SITE_URL}">More info</a>`,
     };
-    return safeSend(
-      chatId,
-      limitMsgs[lang] || limitMsgs.uz,
-      mainMenu(tgUserId),
-    );
+    return safeSend(chatId, limitMsgs[lang] || limitMsgs.uz, mainMenu(tgUserId));
   }
 
   const loader = await safeSend(chatId, T.analyzing);
-  const sess = getSession(tgUserId);
+  const sess   = getSession(tgUserId);
 
-  // Rasm yuklash
+  // Rasm yuklash (agar yuborilgan bo'lsa)
   let imageBase64 = null;
   let imageMimeType = "image/jpeg";
   try {
     if (msg.photo && msg.photo.length > 0) {
+      // Eng katta o'lchamdagi rasmni olish
       const photoId = msg.photo[msg.photo.length - 1].file_id;
       const fileInfo = await bot.getFile(photoId);
       const fileUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${fileInfo.file_path}`;
@@ -479,9 +331,7 @@ bot.on("message", async (msg) => {
         https.get(fileUrl, (res) => {
           const chunks = [];
           res.on("data", (chunk) => chunks.push(chunk));
-          res.on("end", () =>
-            resolve(Buffer.concat(chunks).toString("base64")),
-          );
+          res.on("end", () => resolve(Buffer.concat(chunks).toString("base64")));
           res.on("error", reject);
         });
       });
@@ -489,42 +339,35 @@ bot.on("message", async (msg) => {
     }
   } catch (imgErr) {
     console.error("Rasm yuklash xatosi:", imgErr.message);
+    // Rasm yuklanmasa ham davom etamiz
   }
 
   try {
-    const lang = getLang(tgUserId);
+    const lang   = getLang(tgUserId);
     const prompt = `[${LANG_INSTRUCTION[lang]}]\n\n${text}`;
-    const { answer, category } = await getLegalAdvice(
-      prompt,
-      sess.messages,
-      imageBase64,
-      imageMimeType,
-    );
+    const { answer, category } = await getLegalAdvice(prompt, sess.messages, imageBase64, imageMimeType);
 
     const userContent = imageBase64 ? `[📎 Rasm] ${text}` : text;
-    sess.messages.push({ role: "user", content: userContent });
+    sess.messages.push({ role: "user",      content: userContent });
     sess.messages.push({ role: "assistant", content: answer });
     if (sess.messages.length > 20) sess.messages = sess.messages.slice(-20);
 
-    // MongoDB save
+    // MongoDB save — userId bilan bog'lash
     try {
       let chat = await Chat.findOne({ sessionId: sess.sessionId });
       if (!chat) {
         chat = new Chat({
-          sessionId: sess.sessionId,
-          userId: userId,
-          source: "telegram",
-          telegramUserId: String(tgUserId),
+          sessionId:        sess.sessionId,
+          userId:           userId,
+          source:           "telegram",
+          telegramUserId:   String(tgUserId),
           telegramUsername: tgUsername,
-          messages: [],
+          messages:         [],
         });
       }
-      const tgUserMsg = {
-        role: "user",
-        content: imageBase64 ? `[📎 Rasm] ${text}` : text,
-      };
+      const tgUserMsg = { role: "user", content: imageBase64 ? `[📎 Rasm] ${text}` : text };
       if (imageBase64) {
-        tgUserMsg.imageData = imageBase64;
+        tgUserMsg.imageData     = imageBase64;
         tgUserMsg.imageMimeType = imageMimeType;
       }
       chat.messages.push(tgUserMsg);
@@ -554,9 +397,57 @@ bot.on("message", async (msg) => {
   }
 });
 
+// ── DEEP LINK: /start link_<token> ─────────────────────────────
+// Saytdagi "Telegramni bog'lash" tugmasidan keladi.
+// User token bilan botga keladi — Telegram ID saqlanadi.
+bot.onText(/\/start link_([a-f0-9]+)/, async (msg, match) => {
+  const tgUserId   = msg.from.id;
+  const tgUsername = msg.from.username || null;
+  const chatId     = msg.chat.id;
+  const token      = match[1];
+
+  try {
+    const user = await User.findOne({
+      otpCode:    `tglink_${token}`,
+      otpExpires: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return safeSend(chatId, "❌ Token noto'g'ri yoki muddati tugagan.\n\nSaytdan qayta urinib ko'ring.");
+    }
+
+    // Ushbu Telegram ID boshqa hisobda ishlatilayaptimi?
+    const conflict = await User.findOne({
+      telegramId: String(tgUserId),
+      _id: { $ne: user._id },
+    });
+    if (conflict) {
+      return safeSend(chatId, "⚠️ Bu Telegram hisob allaqachon boshqa akkountga bog'langan.");
+    }
+
+    user.telegramId       = String(tgUserId);
+    user.telegramUsername = tgUsername;
+    user.telegramVerified = true;
+    user.otpCode          = null;
+    user.otpExpires       = null;
+    await user.save();
+
+    // Cache yangilash
+    verifiedUsers.set(String(tgUserId), user._id);
+
+    const lang = getLang(tgUserId);
+    const T    = tg[lang] || tg.uz;
+    await safeSend(chatId, T.linked || tg.uz.linked, mainMenu(tgUserId));
+  } catch (err) {
+    console.error("Deep link error:", err.message);
+    await safeSend(chatId, "❌ Xatolik yuz berdi. Qayta urinib ko'ring.");
+  }
+});
+
 bot.on("polling_error", (err) => {
   console.error("Telegram polling error:", err.message);
 });
 
 // ── EXPORT ──
 module.exports = { bot, verifiedUsers };
+

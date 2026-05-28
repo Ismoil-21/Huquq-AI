@@ -25,11 +25,28 @@ export default function ProfileModal({ onClose }) {
   const [passwordMsg, setPasswordMsg] = useState({ type: "", text: "" });
   const [passwordBusy, setPasswordBusy] = useState(false);
 
+  // Telegram tab
+  const [telegramMsg, setTelegramMsg] = useState({ type: "", text: "" });
+  const [telegramBusy, setTelegramBusy] = useState(false);
+  const [telegramStatus, setTelegramStatus] = useState(null);
+
 
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
+  }, []);
+
+  useEffect(() => {
+    async function fetchTelegramStatus() {
+      try {
+        const { data } = await api.get("/auth/telegram-status");
+        setTelegramStatus(data);
+      } catch (err) {
+        console.error("Failed to fetch telegram status:", err);
+      }
+    }
+    fetchTelegramStatus();
   }, []);
 
 
@@ -79,11 +96,26 @@ export default function ProfileModal({ onClose }) {
     navigate("/");
   }
 
+  async function handleTelegramLinkToken() {
+    setTelegramBusy(true);
+    setTelegramMsg({ type: "", text: "" });
+    try {
+      const { data } = await api.post("/auth/telegram-link-token");
+      window.open(data.botUrl, "_blank");
+      setTelegramMsg({ type: "success", text: t.telegram_opening });
+    } catch (err) {
+      setTelegramMsg({ type: "error", text: err.response?.data?.error || t.error_generic });
+    } finally {
+      setTelegramBusy(false);
+    }
+  }
+
   const isGoogle = user?.authProvider === "google";
 
   const tabs = [
     { id: "profile", label: t.profile_tab },
     { id: "password", label: t.password_tab },
+    { id: "telegram", label: t.telegram_tab },
   ];
 
   return (
@@ -217,6 +249,41 @@ export default function ProfileModal({ onClose }) {
                 </>
               )}
             </form>
+          )}
+
+          {/* Telegram tab */}
+          {tab === "telegram" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              {telegramMsg.text && <Alert type={telegramMsg.type}>{telegramMsg.text}</Alert>}
+              
+              {telegramStatus?.telegramVerified ? (
+                <div style={{ textAlign: "center", padding: "1.5rem" }}>
+                  <div style={{ fontSize: 48, marginBottom: "0.5rem" }}>✅</div>
+                  <h3 style={{ margin: "0 0 0.5rem", color: "var(--navy,#1a1a2e)" }}>{t.telegram_connected}</h3>
+                  <p style={{ margin: 0, color: "#666", fontSize: "0.9rem" }}>{t.telegram_connected_desc}</p>
+                  {telegramStatus.telegramUsername && (
+                    <p style={{ margin: "0.5rem 0 0", color: "#888", fontSize: "0.85rem" }}>
+                      @{telegramStatus.telegramUsername}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+                    <h4 style={{ margin: "0 0 0.5rem", color: "var(--navy,#1a1a2e)" }}>{t.telegram_link_title}</h4>
+                    <ol style={{ textAlign: "left", fontSize: "0.85rem", color: "#666", paddingLeft: "1.2rem" }}>
+                      <li style={{ marginBottom: "0.3rem" }}>{t.telegram_link_step1}</li>
+                      <li style={{ marginBottom: "0.3rem" }}>{t.telegram_link_step2}</li>
+                      <li style={{ marginBottom: "0.3rem" }}>{t.telegram_link_step3}</li>
+                      <li>{t.telegram_link_step4}</li>
+                    </ol>
+                  </div>
+                  <Btn onClick={handleTelegramLinkToken} disabled={telegramBusy}>
+                    {telegramBusy ? t.telegram_loading : t.telegram_link_btn}
+                  </Btn>
+                </>
+              )}
+            </div>
           )}
 
 

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLang } from "../context/LangContext";
 import LangSwitcher from "../components/LangSwitcher";
-import axios from "axios";
+import api from "../utils/api";
 import s from "./Auth.module.css";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
@@ -198,7 +198,7 @@ function SupportModal({ onClose }) {
     setErr("");
     setBusy(true);
     try {
-      await axios.post("/api/support", form);
+      await api.post("/support", form);
       setSuccess(true);
       setTimeout(() => onClose(), 2000);
     } catch (ex) {
