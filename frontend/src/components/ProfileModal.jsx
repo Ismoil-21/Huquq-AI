@@ -102,9 +102,11 @@ export default function ProfileModal({ onClose }) {
     setTelegramMsg({ type: "", text: "" });
     try {
       const { data } = await api.post("/auth/telegram-link-token", { telegramUsername });
-      window.open(data.botUrl, "_blank");
-      setTelegramMsg({ type: "success", text: t.telegram_opening });
+      setTelegramMsg({ type: "success", text: "Telegram username saqlandi" });
       setTelegramUsername("");
+      // Refresh telegram status to update UI
+      const { data: statusData } = await api.get("/auth/telegram-status");
+      setTelegramStatus(statusData);
     } catch (err) {
       setTelegramMsg({ type: "error", text: err.response?.data?.error || t.error_generic });
     } finally {
