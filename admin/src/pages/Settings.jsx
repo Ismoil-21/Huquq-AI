@@ -73,7 +73,7 @@ export default function Settings() {
         {/* Site links */}
         <Card title="Murojaatlar">
           <div className={s.links}>
-            <a href="https://huquq-ai-seven.vercel.app/" target="_blank" rel="noreferrer" className={s.link}>🌐 Asosiy sayt →</a>
+            <a href="https://huquq-ai-rose.vercel.app/" target="_blank" rel="noreferrer" className={s.link}>🌐 Asosiy sayt →</a>
             <a href="https://huquq-ai-fpa2.onrender.com/health" target="_blank" rel="noreferrer" className={s.link}>❤️ API holati →</a>
           </div>
         </Card>
