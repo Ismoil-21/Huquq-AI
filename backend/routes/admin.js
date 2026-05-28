@@ -273,13 +273,16 @@ router.patch("/users/:id/reset-password", adminGuard, async (req, res) => {
 
     // Email yuborish (email bo'lsa)
     let emailSent = false;
+    let emailError = null;
     if (user.email) {
       try {
         const { sendPasswordResetEmail } = require("../services/emailService");
         await sendPasswordResetEmail(user.email, newPassword, user.fullName, req.authUser.username);
         emailSent = true;
+        console.log(`Password reset email sent to ${user.email}`);
       } catch (mailErr) {
         console.error("Password reset email xatosi:", mailErr.message);
+        emailError = mailErr.message;
         // Email yuborilmasa ham parol o'zgartirilgan — xatolik qaytarmaymiz
       }
     }
@@ -289,6 +292,7 @@ router.patch("/users/:id/reset-password", adminGuard, async (req, res) => {
       message: `@${user.username} paroli yangilandi`,
       emailSent,
       emailAddress: user.email || null,
+      emailError: emailError || null,
     });
   } catch (err) {
     console.error("reset-password:", err.message);
