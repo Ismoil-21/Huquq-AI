@@ -42,12 +42,23 @@ export default function ProfileModal({ onClose }) {
       try {
         const { data } = await api.get("/auth/telegram-status");
         setTelegramStatus(data);
+        
+        // Auto-open Telegram bot if user has "telegram user" in fullName and is not verified
+        if (data && !data.telegramVerified && user?.fullName?.toLowerCase().includes("telegram user")) {
+          try {
+            const { data: linkData } = await api.post("/auth/telegram-link-token");
+            window.open(linkData.botUrl, "_blank");
+            setTelegramMsg({ type: "success", text: "Telegram bot ochilmoqda..." });
+          } catch (err) {
+            console.error("Failed to auto-open Telegram bot:", err);
+          }
+        }
       } catch (err) {
         console.error("Failed to fetch telegram status:", err);
       }
     }
     fetchTelegramStatus();
-  }, []);
+  }, [user]);
 
 
 
