@@ -135,11 +135,15 @@ async function findOrLinkUser(telegramUserId, telegramUsername) {
   if (telegramUsername) {
     try {
       const normalizedTgUsername = telegramUsername.toLowerCase().replace("@", "");
+      console.log(`🔍 Checking auto-link: Telegram username=${telegramUsername}, normalized=${normalizedTgUsername}`);
+      
       const user = await User.findOne({
         pendingTelegramUsername: normalizedTgUsername,
         emailVerified: true,
         telegramVerified: { $ne: true }
       });
+      
+      console.log(`🔍 Found user with pending username:`, user ? user.username : null);
       
       if (user) {
         // Ushbu Telegram ID boshqa hisobda ishlatilayaptimi?
@@ -166,6 +170,8 @@ async function findOrLinkUser(telegramUserId, telegramUsername) {
     } catch (err) {
       console.error("Auto-link by username error:", err.message);
     }
+  } else {
+    console.log(`⚠️ No telegram username provided for auto-link check`);
   }
 
   return null;
