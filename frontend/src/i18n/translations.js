@@ -371,6 +371,11 @@ export const translations = {
     login_username_ph: "username yoki email",
     login_password_ph: "••••••",
     register_email_ph: "misol@gmail.com",
+    register_success_title: "Ro'yxatdan o'tdingiz!",
+    register_tg_desc:
+      "Telegram botni ulang — AI maslahatdan Telegram orqali ham foydalaning",
+    register_tg_btn: "Telegram botni ulash →",
+    register_tg_skip: "Keyinroq ulash →",
   },
 
   ru: {
@@ -725,6 +730,11 @@ export const translations = {
     login_username_ph: "username или email",
     login_password_ph: "••••••",
     register_email_ph: "primer@gmail.com",
+    register_success_title: "Регистрация прошла успешно!",
+    register_tg_desc:
+      "Подключите Telegram бота — пользуйтесь AI консультацией прямо в Telegram",
+    register_tg_btn: "Подключить Telegram бота →",
+    register_tg_skip: "Подключить позже →",
   },
 
   en: {
@@ -1094,6 +1104,11 @@ export const translations = {
     login_username_ph: "username or email",
     login_password_ph: "••••••",
     register_email_ph: "example@gmail.com",
+    register_success_title: "Registration successful!",
+    register_tg_desc:
+      "Connect the Telegram bot — use AI consultation right in Telegram",
+    register_tg_btn: "Connect Telegram bot →",
+    register_tg_skip: "Connect later →",
   },
 };
 

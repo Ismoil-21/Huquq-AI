@@ -25,24 +25,14 @@ export default function ProfileModal({ onClose }) {
   const [passwordMsg, setPasswordMsg] = useState({ type: "", text: "" });
   const [passwordBusy, setPasswordBusy] = useState(false);
 
-  // Telegram tab
-  const [telegramId, setTelegramId] = useState("");
-  const [telegramStatus, setTelegramStatus] = useState(null);
-  const [telegramMsg, setTelegramMsg] = useState({ type: "", text: "" });
-  const [telegramBusy, setTelegramBusy] = useState(false);
+
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
   }, []);
 
-  useEffect(() => {
-    // Load telegram status
-    api.get("/auth/telegram-status").then(({ data }) => {
-      setTelegramStatus(data);
-      if (data.telegramId) setTelegramId(data.telegramId);
-    }).catch(() => {});
-  }, []);
+
 
   function handleOverlayClick(e) {
     if (e.target === overlayRef.current) onClose();
@@ -83,24 +73,6 @@ export default function ProfileModal({ onClose }) {
     }
   }
 
-  async function handleTelegramLink(e) {
-    e.preventDefault();
-    const id = telegramId.trim();
-    if (!id) return setTelegramMsg({ type: "error", text: t.telegram_id_required });
-    if (!/^\d+$/.test(id)) return setTelegramMsg({ type: "error", text: t.telegram_id_numeric });
-    setTelegramBusy(true);
-    setTelegramMsg({ type: "", text: "" });
-    try {
-      const { data } = await api.post("/auth/link-telegram", { telegramId: id });
-      setTelegramStatus({ telegramId: id, telegramVerified: true });
-      setTelegramMsg({ type: "success", text: t.telegram_linked });
-    } catch (err) {
-      setTelegramMsg({ type: "error", text: err.response?.data?.error || t.error_generic });
-    } finally {
-      setTelegramBusy(false);
-    }
-  }
-
   function handleLogout() {
     logout();
     onClose();
@@ -112,7 +84,6 @@ export default function ProfileModal({ onClose }) {
   const tabs = [
     { id: "profile", label: t.profile_tab },
     { id: "password", label: t.password_tab },
-    { id: "telegram", label: t.telegram_tab },
   ];
 
   return (
@@ -181,15 +152,6 @@ export default function ProfileModal({ onClose }) {
             <p style={{ margin: "0.2rem 0 0", fontSize: "0.82rem", color: "#888" }}>
               {user?.email}
             </p>
-            {telegramStatus?.telegramVerified && (
-              <span style={{
-                display: "inline-block", marginTop: "0.4rem",
-                background: "#e8f5e9", color: "#2e7d32",
-                padding: "2px 10px", borderRadius: 20, fontSize: "0.75rem", fontWeight: 600,
-              }}>
-                ✈️ Telegram bog'langan
-              </span>
-            )}
           </div>
 
           {/* Tabs */}
@@ -257,63 +219,7 @@ export default function ProfileModal({ onClose }) {
             </form>
           )}
 
-          {/* Telegram tab */}
-          {tab === "telegram" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              {telegramMsg.text && <Alert type={telegramMsg.type}>{telegramMsg.text}</Alert>}
 
-              {telegramStatus?.telegramVerified ? (
-                <div style={{
-                  background: "#e8f5e9", borderRadius: 10, padding: "1rem",
-                  display: "flex", alignItems: "center", gap: "0.75rem",
-                }}>
-                  <span style={{ fontSize: "1.5rem" }}>✅</span>
-                  <div>
-                    <p style={{ margin: 0, fontWeight: 600, color: "#2e7d32", fontSize: "0.9rem" }}>Telegram bog'langan</p>
-                    {telegramStatus.telegramUsername && (
-                      <p style={{ margin: 0, fontSize: "0.8rem", color: "#555" }}>@{telegramStatus.telegramUsername}</p>
-                    )}
-                    <p style={{ margin: "0.25rem 0 0", fontSize: "0.78rem", color: "#888" }}>
-                      Endi Telegram botdan ham foydalanishingiz mumkin ✓
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div style={{
-                    background: "#f8f9ff", borderRadius: 10, padding: "1rem",
-                    fontSize: "0.85rem", color: "#444", lineHeight: 1.6,
-                  }}>
-                    <strong>Telegram bot bilan bog'lash:</strong>
-                    <ol style={{ margin: "0.5rem 0 0", paddingLeft: "1.2rem" }}>
-                      <li>Quyidagi tugmani bosing</li>
-                      <li>Telegram ilovasida bot ochiladi</li>
-                      <li>Botga <code style={{ background: "#eee", padding: "1px 4px", borderRadius: 3 }}>/start</code> tugmasini bosing</li>
-                      <li>Hisobingiz avtomatik bog'lanadi ✅</li>
-                    </ol>
-                  </div>
-                  <Btn
-                    disabled={telegramBusy}
-                    onClick={async () => {
-                      setTelegramBusy(true);
-                      setTelegramMsg({ type: "", text: "" });
-                      try {
-                        const { data } = await api.post("/auth/telegram-link-token");
-                        window.open(data.botUrl, "_blank");
-                        setTelegramMsg({ type: "success", text: "Telegram ochildi. Botga /start bosing. So'ng bu sahifani yangilang." });
-                      } catch (err) {
-                        setTelegramMsg({ type: "error", text: err.response?.data?.error || "Xatolik yuz berdi" });
-                      } finally {
-                        setTelegramBusy(false);
-                      }
-                    }}
-                  >
-                    {telegramBusy ? "Yuklanmoqda…" : "✈️ Telegram orqali bog'lash"}
-                  </Btn>
-                </>
-              )}
-            </div>
-          )}
 
           {/* Logout */}
           <div style={{ marginTop: "1.5rem", textAlign: "center", paddingTop: "1rem", borderTop: "1px solid #f0ede8" }}>

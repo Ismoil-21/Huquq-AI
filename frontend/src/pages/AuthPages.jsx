@@ -12,22 +12,10 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 function GoogleIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 48 48" style={{ flexShrink: 0 }}>
-      <path
-        fill="#EA4335"
-        d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
-      />
-      <path
-        fill="#4285F4"
-        d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
-      />
-      <path
-        fill="#34A853"
-        d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
-      />
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
     </svg>
   );
 }
@@ -81,12 +69,7 @@ function GoogleButton({ labelKey, onCredential, disabled }) {
 
   if (!GOOGLE_CLIENT_ID) {
     return (
-      <button
-        type="button"
-        className={s.googleBtn}
-        disabled
-        style={{ opacity: 0.5, cursor: "not-allowed" }}
-      >
+      <button type="button" className={s.googleBtn} disabled style={{ opacity: 0.5, cursor: "not-allowed" }}>
         <GoogleIcon />
         <span>{t.google_btn_disabled}</span>
       </button>
@@ -156,9 +139,7 @@ function OTPVerify({ email, onSuccess, onBack }) {
     <div className={s.page}>
       <div className={s.card}>
         <div className={s.cardTop}>
-          <Link to="/" className={s.logo}>
-            ⚖ Mening Huquqim
-          </Link>
+          <Link to="/" className={s.logo}>⚖ Mening Huquqim</Link>
           <LangSwitcher />
         </div>
         <div className={s.otpIcon}>📧</div>
@@ -176,40 +157,24 @@ function OTPVerify({ email, onSuccess, onBack }) {
             pattern="[0-9]*"
             maxLength={6}
             value={otp}
-            onChange={(e) =>
-              setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
-            }
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
             placeholder="_ _ _ _ _ _"
             autoFocus
           />
-          <button
-            className={s.btn}
-            onClick={handleVerify}
-            disabled={busy || otp.length < 6}
-          >
+          <button className={s.btn} onClick={handleVerify} disabled={busy || otp.length < 6}>
             {busy ? t.otp_verifying : t.otp_verify}
           </button>
         </div>
         <div className={s.otpFooter}>
           {timer > 0 ? (
-            <span className={s.timerText}>
-              {t.otp_timer}: {timer}s
-            </span>
+            <span className={s.timerText}>{t.otp_timer}: {timer}s</span>
           ) : (
-            <button
-              className={s.linkBtn}
-              onClick={handleResend}
-              disabled={busy}
-            >
+            <button className={s.linkBtn} onClick={handleResend} disabled={busy}>
               {t.otp_resend}
             </button>
           )}
         </div>
-        <button
-          className={s.linkBtn}
-          onClick={onBack}
-          style={{ marginTop: "0.5rem" }}
-        >
+        <button className={s.linkBtn} onClick={onBack} style={{ marginTop: "0.5rem" }}>
           {t.otp_back}
         </button>
       </div>
@@ -228,14 +193,8 @@ function SupportModal({ onClose }) {
   async function handleSubmit(e) {
     e.preventDefault();
     if (!form.message.trim()) return;
-    if (!form.name.trim()) {
-      setErr(t.support_name_required);
-      return;
-    }
-    if (!form.email.trim()) {
-      setErr(t.support_email_required);
-      return;
-    }
+    if (!form.name.trim()) { setErr(t.support_name_required); return; }
+    if (!form.email.trim()) { setErr(t.support_email_required); return; }
     setErr("");
     setBusy(true);
     try {
@@ -244,12 +203,8 @@ function SupportModal({ onClose }) {
       setTimeout(() => onClose(), 2000);
     } catch (ex) {
       const errorMsg = ex.response?.data?.error;
-      if (
-        errorMsg?.includes("email") ||
-        errorMsg?.includes("Email") ||
-        errorMsg?.includes("пользователь") ||
-        errorMsg?.includes("user")
-      ) {
+      if (errorMsg?.includes("email") || errorMsg?.includes("Email") ||
+          errorMsg?.includes("пользователь") || errorMsg?.includes("user")) {
         setErr(t.support_email_not_found);
       } else {
         setErr(errorMsg || t.support_error);
@@ -274,48 +229,28 @@ function SupportModal({ onClose }) {
       <div className={s.modal} onClick={(e) => e.stopPropagation()}>
         <div className={s.modalHeader}>
           <h2>{t.support_title}</h2>
-          <button className={s.modalClose} onClick={onClose}>
-            ×
-          </button>
+          <button className={s.modalClose} onClick={onClose}>×</button>
         </div>
         <p className={s.modalDesc}>{t.support_desc}</p>
         {err && <div className={s.error}>{err}</div>}
         <form className={s.modalForm} onSubmit={handleSubmit}>
           <label className={s.label}>
             {t.support_name}
-            <input
-              className={s.input}
-              value={form.name}
+            <input className={s.input} value={form.name}
               onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-              placeholder={t.support_name}
-              required
-            />
+              placeholder={t.support_name} required />
           </label>
           <label className={s.label}>
             {t.support_email}
-            <input
-              className={s.input}
-              type="email"
-              value={form.email}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, email: e.target.value }))
-              }
-              placeholder={t.support_email}
-              required
-            />
+            <input className={s.input} type="email" value={form.email}
+              onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+              placeholder={t.support_email} required />
           </label>
           <label className={s.label}>
             {t.support_message}
-            <textarea
-              className={s.textarea}
-              value={form.message}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, message: e.target.value }))
-              }
-              placeholder={t.support_message}
-              required
-              rows={4}
-            />
+            <textarea className={s.textarea} value={form.message}
+              onChange={(e) => setForm((p) => ({ ...p, message: e.target.value }))}
+              placeholder={t.support_message} required rows={4} />
           </label>
           <button className={s.btn} type="submit" disabled={busy}>
             {busy ? t.support_sending : t.support_send}
@@ -372,64 +307,36 @@ export function Login() {
   }
 
   if (needsVerify) {
-    return (
-      <OTPVerify
-        email={verifyEmail}
-        onSuccess={() => nav("/chat")}
-        onBack={() => setNeedsVerify(false)}
-      />
-    );
+    return <OTPVerify email={verifyEmail} onSuccess={() => nav("/chat")} onBack={() => setNeedsVerify(false)} />;
   }
 
   return (
     <div className={s.page}>
       <div className={s.card}>
         <div className={s.cardTop}>
-          <Link to="/" className={s.logo}>
-            ⚖ {t.nav_logo}
-          </Link>
+          <Link to="/" className={s.logo}>⚖ {t.nav_logo}</Link>
           <LangSwitcher />
         </div>
         <h1 className={s.title}>{t.login_title}</h1>
         <p className={s.sub}>{t.login_sub}</p>
         {err && <div className={s.error}>{err}</div>}
 
-        <GoogleButton
-          labelKey="google_btn"
-          onCredential={handleGoogle}
-          disabled={busy}
-        />
+        <GoogleButton labelKey="google_btn" onCredential={handleGoogle} disabled={busy} />
 
-        <div className={s.divider}>
-          <span>{t.divider_or}</span>
-        </div>
+        <div className={s.divider}><span>{t.divider_or}</span></div>
 
         <div className={s.form}>
           <label className={s.label}>
             {t.login_username}
-            <input
-              className={s.input}
-              value={form.username}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, username: e.target.value }))
-              }
-              placeholder={t.login_username_ph}
-              required
-              autoFocus
-            />
+            <input className={s.input} value={form.username}
+              onChange={(e) => setForm((p) => ({ ...p, username: e.target.value }))}
+              placeholder={t.login_username_ph} required autoFocus />
           </label>
           <label className={s.label}>
             {t.login_password}
-            <input
-              className={s.input}
-              type="password"
-              value={form.password}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, password: e.target.value }))
-              }
-              placeholder={t.login_password_ph}
-              required
-            />
+            <input className={s.input} type="password" value={form.password}
+              onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+              placeholder={t.login_password_ph} required />
           </label>
           <button className={s.btn} onClick={submit} disabled={busy}>
             {busy ? t.login_loading : t.login_btn}
@@ -437,15 +344,9 @@ export function Login() {
         </div>
         <p className={s.foot}>
           {t.login_no_account}{" "}
-          <Link to="/register" className={s.link}>
-            {t.login_register_link}
-          </Link>
+          <Link to="/register" className={s.link}>{t.login_register_link}</Link>
         </p>
-        <button
-          className={s.linkBtn}
-          onClick={() => setShowSupport(true)}
-          style={{ marginTop: "0.5rem" }}
-        >
+        <button className={s.linkBtn} onClick={() => setShowSupport(true)} style={{ marginTop: "0.5rem" }}>
           {t.tech_support}
         </button>
         {showSupport && <SupportModal onClose={() => setShowSupport(false)} />}
@@ -455,17 +356,46 @@ export function Login() {
 }
 
 /* ───────── Register sahifasi ───────── */
+/* ───────── Telegram Bot ulanish ekrani ───────── */
+function TelegramConnect({ botUrl, onSkip }) {
+  const { t } = useLang();
+  return (
+    <div className={s.page}>
+      <div className={s.card} style={{ textAlign: "center" }}>
+        <div style={{ fontSize: 56, marginBottom: "1rem" }}>✅</div>
+        <h1 className={s.title} style={{ fontSize: 22 }}>
+          {t.register_success_title || "Ro'yxatdan o'tdingiz!"}
+        </h1>
+        <p className={s.sub} style={{ marginBottom: "1.5rem" }}>
+          {t.register_tg_desc || "Telegram botni ulang — AI maslahatdan Telegram orqali ham foydalaning"}
+        </p>
+        <a
+          href={botUrl}
+          target="_blank"
+          rel="noreferrer"
+          className={s.btn}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, textDecoration: "none", borderRadius: 24, background: "#229ED9", marginBottom: "1rem" }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L8.19 13.925l-2.965-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.963.634z"/>
+          </svg>
+          {t.register_tg_btn || "Telegram botni ulash →"}
+        </a>
+        <button className={s.linkBtn} onClick={onSkip}>
+          {t.register_tg_skip || "Keyinroq ulash →"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function Register() {
-  const [form, setForm] = useState({
-    username: "",
-    password: "",
-    fullName: "",
-    email: "",
-  });
+  const [form, setForm] = useState({ username: "", password: "", fullName: "", email: "" });
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [needsVerify, setNeedsVerify] = useState(false);
   const [verifyEmail, setVerifyEmail] = useState("");
+  const [botUrl, setBotUrl] = useState(null);
   const { register, loginWithGoogle } = useAuth();
   const { t } = useLang();
   const nav = useNavigate();
@@ -475,15 +405,12 @@ export function Register() {
     setErr("");
     setBusy(true);
     try {
-      const result = await register(
-        form.username.trim(),
-        form.password,
-        form.fullName.trim(),
-        form.email.trim(),
-      );
+      const result = await register(form.username.trim(), form.password, form.fullName.trim(), form.email.trim());
       if (result?.needsVerification) {
         setVerifyEmail(result.email || form.email);
         setNeedsVerify(true);
+      } else if (result?.botUrl) {
+        setBotUrl(result.botUrl);
       } else {
         nav("/chat");
       }
@@ -498,8 +425,12 @@ export function Register() {
     setErr("");
     setBusy(true);
     try {
-      await loginWithGoogle(credential);
-      nav("/chat");
+      const result = await loginWithGoogle(credential);
+      if (result?.botUrl) {
+        setBotUrl(result.botUrl);
+      } else {
+        nav("/chat");
+      }
     } catch (ex) {
       setErr(ex.response?.data?.error || t.google_error);
     } finally {
@@ -507,90 +438,53 @@ export function Register() {
     }
   }
 
+  if (botUrl) {
+    return <TelegramConnect botUrl={botUrl} onSkip={() => nav("/chat")} />;
+  }
+
   if (needsVerify) {
-    return (
-      <OTPVerify
-        email={verifyEmail}
-        onSuccess={() => nav("/chat")}
-        onBack={() => setNeedsVerify(false)}
-      />
-    );
+    return <OTPVerify email={verifyEmail} onSuccess={() => nav("/chat")} onBack={() => setNeedsVerify(false)} />;
   }
 
   return (
     <div className={s.page}>
       <div className={s.card}>
         <div className={s.cardTop}>
-          <Link to="/" className={s.logo}>
-            ⚖ {t.nav_logo}
-          </Link>
+          <Link to="/" className={s.logo}>⚖ {t.nav_logo}</Link>
           <LangSwitcher />
         </div>
         <h1 className={s.title}>{t.register_title}</h1>
         <p className={s.sub}>{t.register_sub}</p>
         {err && <div className={s.error}>{err}</div>}
 
-        <GoogleButton
-          labelKey="google_btn_register"
-          onCredential={handleGoogle}
-          disabled={busy}
-        />
+        <GoogleButton labelKey="google_btn_register" onCredential={handleGoogle} disabled={busy} />
 
-        <div className={s.divider}>
-          <span>{t.divider_or_email}</span>
-        </div>
+        <div className={s.divider}><span>{t.divider_or_email}</span></div>
 
         <div className={s.form}>
           <label className={s.label}>
             {t.register_fullname}
-            <input
-              className={s.input}
-              value={form.fullName}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, fullName: e.target.value }))
-              }
-              placeholder={t.register_fullname_ph}
-            />
+            <input className={s.input} value={form.fullName}
+              onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))}
+              placeholder={t.register_fullname_ph} />
           </label>
           <label className={s.label}>
             Username
-            <input
-              className={s.input}
-              value={form.username}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, username: e.target.value }))
-              }
-              placeholder={t.register_username_ph}
-              required
-              autoFocus
-            />
+            <input className={s.input} value={form.username}
+              onChange={(e) => setForm((p) => ({ ...p, username: e.target.value }))}
+              placeholder={t.register_username_ph} required autoFocus />
           </label>
           <label className={s.label}>
             Email
-            <input
-              className={s.input}
-              type="email"
-              value={form.email}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, email: e.target.value }))
-              }
-              placeholder={t.register_email_ph}
-              required
-            />
+            <input className={s.input} type="email" value={form.email}
+              onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+              placeholder={t.register_email_ph} required />
           </label>
           <label className={s.label}>
             {t.login_password}
-            <input
-              className={s.input}
-              type="password"
-              value={form.password}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, password: e.target.value }))
-              }
-              placeholder={t.register_password_ph}
-              required
-              minLength={6}
-            />
+            <input className={s.input} type="password" value={form.password}
+              onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+              placeholder={t.register_password_ph} required minLength={6} />
           </label>
           <button className={s.btn} onClick={submit} disabled={busy}>
             {busy ? t.register_loading : t.register_btn}
@@ -598,9 +492,7 @@ export function Register() {
         </div>
         <p className={s.foot}>
           {t.register_have_account}{" "}
-          <Link to="/login" className={s.link}>
-            {t.register_login_link}
-          </Link>
+          <Link to="/login" className={s.link}>{t.register_login_link}</Link>
         </p>
       </div>
     </div>

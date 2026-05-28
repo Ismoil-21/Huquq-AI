@@ -71,6 +71,10 @@ router.post("/register", async (req, res) => {
       authProvider: "local",
     });
 
+    const crypto = require("crypto");
+    const tgToken   = crypto.randomBytes(20).toString("hex");
+    const tgExpires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 kun
+
     const user = await User.create({
       username:      username.trim().toLowerCase(),
       password,
@@ -78,16 +82,22 @@ router.post("/register", async (req, res) => {
       email:         email.trim().toLowerCase(),
       emailVerified: true,
       authProvider:  "local",
+      otpCode:       `tglink_${tgToken}`,
+      otpExpires:    tgExpires,
     });
 
     const verifySource = req.headers["x-app-platform"] === "mobile" ? "mobile" : "web";
     await logLogin(req, user._id, verifySource);
+
+    const botUsername = process.env.TELEGRAM_BOT_USERNAME || "mening_huquqlarim_bot";
+    const botUrl = `https://t.me/${botUsername}?start=link_${tgToken}`;
 
     const token = signToken(user);
     return res.status(201).json({
       message: "Ro'yxatdan muvaffaqiyatli o'tdingiz!",
       token,
       user: userPublic(user),
+      botUrl,
     });
   } catch (err) {
     console.error("register error:", err.message);
@@ -286,6 +296,10 @@ router.post("/google", async (req, res) => {
         username = `${baseUsername}${counter++}`;
       }
 
+      const cryptoG = require("crypto");
+      const tgTokenG   = cryptoG.randomBytes(20).toString("hex");
+      const tgExpiresG = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
       user = await User.create({
         username,
         password:      "",
@@ -294,7 +308,11 @@ router.post("/google", async (req, res) => {
         emailVerified: true,
         googleId,
         authProvider:  "google",
+        otpCode:       `tglink_${tgTokenG}`,
+        otpExpires:    tgExpiresG,
       });
+
+      user._tgToken = tgTokenG; // temp, DB ga saqlanmaydi
     }
 
     user.lastLogin = new Date();
@@ -302,8 +320,13 @@ router.post("/google", async (req, res) => {
 
     await logLogin(req, user._id, "google");
 
+    const botUsernameG = process.env.TELEGRAM_BOT_USERNAME || "mening_huquqlarim_bot";
+    const botUrlG = user.otpCode?.startsWith("tglink_")
+      ? `https://t.me/${botUsernameG}?start=link_${user.otpCode.replace("tglink_", "")}`
+      : null;
+
     const token = signToken(user);
-    return res.json({ token, user: userPublic(user) });
+    return res.json({ token, user: userPublic(user), botUrl: botUrlG });
   } catch (err) {
     console.error("google auth error:", err.message);
     if (err.code === 11000) {
