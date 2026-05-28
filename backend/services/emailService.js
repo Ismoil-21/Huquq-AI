@@ -3,8 +3,8 @@ const nodemailer = require("nodemailer");
 
 function createTransport() {
   return nodemailer.createTransport({
-    host:   process.env.SMTP_HOST   || "smtp.gmail.com",
-    port:   parseInt(process.env.SMTP_PORT || "587"),
+    host: process.env.SMTP_HOST || "smtp.gmail.com",
+    port: parseInt(process.env.SMTP_PORT || "587"),
     secure: process.env.SMTP_SECURE === "true",
     auth: {
       user: process.env.SMTP_USER,
@@ -70,7 +70,7 @@ async function sendOTPEmail(toEmail, otp, fullName = "") {
   try {
     const info = await transporter.sendMail({
       from: `"Mening Huquqim" <${process.env.SMTP_USER}>`,
-      to:   toEmail,
+      to: toEmail,
       subject: `Tasdiqlash kodi: ${otp} — Mening Huquqim`,
       html,
       text: `Tasdiqlash kodingiz: ${otp}\n\nKod 10 daqiqa ichida amal qiladi.`,
@@ -87,9 +87,21 @@ async function sendOTPEmail(toEmail, otp, fullName = "") {
   }
 }
 
-async function sendPasswordResetEmail(toEmail, newPassword, fullName = "", adminUsername = "Admin") {
+async function sendPasswordResetEmail(
+  toEmail,
+  newPassword,
+  fullName = "",
+  adminUsername = "Admin",
+) {
   const transporter = createTransport();
   const name = fullName || "Foydalanuvchi";
+
+  console.log(
+    "Sending password reset email to:",
+    toEmail,
+    "SMTP user:",
+    process.env.SMTP_USER ? "SET" : "NOT SET",
+  );
 
   const html = `
 <!DOCTYPE html>
@@ -133,13 +145,24 @@ async function sendPasswordResetEmail(toEmail, newPassword, fullName = "", admin
 </body>
 </html>`;
 
-  await transporter.sendMail({
-    from:    `"Mening Huquqim" <${process.env.SMTP_USER}>`,
-    to:      toEmail,
-    subject: "Parolingiz o'zgartirildi — Mening Huquqim",
-    html,
-    text:    `Assalomu alaykum, ${name}!\n\nAdministrator tomonidan parolingiz yangilandi.\n\nYangi parolingiz: ${newPassword}\n\nTizimga kirganingizdan so'ng parolni o'zgartirishingizni tavsiya qilamiz.`,
-  });
+  try {
+    const info = await transporter.sendMail({
+      from: `"Mening Huquqim" <${process.env.SMTP_USER}>`,
+      to: toEmail,
+      subject: "Parolingiz o'zgartirildi — Mening Huquqim",
+      html,
+      text: `Assalomu alaykum, ${name}!\n\nAdministrator tomonidan parolingiz yangilandi.\n\nYangi parolingiz: ${newPassword}\n\nTizimga kirganingizdan so'ng parolni o'zgartirishingizni tavsiya qilamiz.`,
+    });
+    console.log("Password reset email sent:", info.messageId);
+  } catch (error) {
+    console.error("Password reset email error:", {
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      message: error.message,
+    });
+    throw error;
+  }
 }
 
 module.exports = { generateOTP, sendOTPEmail, sendPasswordResetEmail };

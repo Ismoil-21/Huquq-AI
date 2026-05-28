@@ -340,8 +340,16 @@ router.post("/google", async (req, res) => {
 /* GET /api/auth/me */
 router.get("/me", require("../middleware/auth").userGuard, async (req, res) => {
   try {
-    const user = await User.findById(req.authUser.id).select("-password -otpCode -otpExpires").lean();
-    if (!user) return res.status(404).json({ error: "Foydalanuvchi topilmadi" });
+    const userId = String(req.authUser.id);
+
+    // Admin bu userni o'chirganda darhol 401 qaytaramiz
+    const { deletedUserIds } = require("./admin");
+    if (deletedUserIds?.has(userId)) {
+      return res.status(401).json({ error: "Akkaunt o'chirildi", deleted: true });
+    }
+
+    const user = await User.findById(userId).select("-password -otpCode -otpExpires").lean();
+    if (!user) return res.status(401).json({ error: "Foydalanuvchi topilmadi", deleted: true });
     return res.json({ user });
   } catch {
     return res.status(500).json({ error: "Server xatosi" });

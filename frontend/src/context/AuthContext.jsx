@@ -26,6 +26,31 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
+  // Har 30 soniyada /api/auth/me tekshirish — admin o'chirsa darhol logout
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        const { data } = await api.get("/auth/me");
+        if (data?.user) {
+          // User ma'lumotlari yangilangan bo'lsa localStorage ni yangilaymiz
+          setUser((prev) => ({ ...prev, ...data.user }));
+        }
+      } catch (err) {
+        if (err.response?.status === 401) {
+          // Akkaunt o'chirilgan yoki token yaroqsiz — logout
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          setUser(null);
+          window.location.href = "/login";
+        }
+      }
+    }, 30000); // 30 soniya
+    return () => clearInterval(interval);
+  }, [user]);
+
   const login = useCallback(async (username, password) => {
     const { data } = await api.post("/auth/login", { username, password });
     localStorage.setItem("token", data.token);

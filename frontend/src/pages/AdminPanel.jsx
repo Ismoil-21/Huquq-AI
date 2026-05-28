@@ -317,6 +317,85 @@ function UsersList() {
 }
 
 // ── MAIN ADMIN PANEL ─────────────────────────────────────────────────────────
+
+// ── SETTINGS ──────────────────────────────────────────────────────────────────
+function Settings() {
+  const [cur,  setCur]  = useState("");
+  const [np,   setNp]   = useState("");
+  const [conf, setConf] = useState("");
+  const [msg,  setMsg]  = useState({ type: "", text: "" });
+  const [busy, setBusy] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!cur || !np || !conf) return setMsg({ type: "error", text: "Barcha maydonlarni to'ldiring" });
+    if (np.length < 6)        return setMsg({ type: "error", text: "Yangi parol kamida 6 ta belgi bo'lsin" });
+    if (np !== conf)          return setMsg({ type: "error", text: "Yangi parollar mos kelmadi" });
+    setBusy(true);
+    setMsg({ type: "", text: "" });
+    try {
+      await adminApi.post("/admin/change-password", { currentPassword: cur, newPassword: np });
+      setMsg({ type: "success", text: "✅ Parol muvaffaqiyatli o'zgartirildi" });
+      setCur(""); setNp(""); setConf("");
+    } catch (err) {
+      setMsg({ type: "error", text: err.response?.data?.error || "Server xatosi" });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const inp = {
+    display: "block", width: "100%", padding: "10px 14px",
+    border: "1.5px solid #e2e8f0", borderRadius: 8, fontSize: 14,
+    outline: "none", boxSizing: "border-box", marginTop: 6,
+    fontFamily: "inherit", color: "#1e293b",
+  };
+  const lbl = { display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 12 };
+
+  return (
+    <div className={s.section}>
+      <h2 className={s.sectionTitle}>⚙️ Sozlamalar</h2>
+      <div style={{ maxWidth: 420, background: "#fff", borderRadius: 12, padding: "1.5rem", boxShadow: "0 1px 4px rgba(0,0,0,.06)" }}>
+        <h3 style={{ margin: "0 0 1.25rem", fontSize: 16, color: "#1e293b" }}>🔐 Parolni o'zgartirish</h3>
+        {msg.text && (
+          <div style={{
+            padding: "10px 14px", borderRadius: 8, marginBottom: "1rem", fontSize: 13,
+            background: msg.type === "success" ? "#f0fdf4" : "#fff1f2",
+            color:      msg.type === "success" ? "#15803d" : "#be123c",
+            border:     `1px solid ${msg.type === "success" ? "#bbf7d0" : "#fecdd3"}`,
+          }}>{msg.text}</div>
+        )}
+        <form onSubmit={handleSubmit}>
+          <label style={lbl}>
+            Joriy parol
+            <input style={inp} type="password" value={cur} onChange={e => setCur(e.target.value)} placeholder="••••••" required />
+          </label>
+          <label style={lbl}>
+            Yangi parol
+            <input style={inp} type="password" value={np}  onChange={e => setNp(e.target.value)}  placeholder="Kamida 6 belgi" required minLength={6} />
+          </label>
+          <label style={lbl}>
+            Yangi parolni tasdiqlang
+            <input style={inp} type="password" value={conf} onChange={e => setConf(e.target.value)} placeholder="••••••" required />
+          </label>
+          <button
+            type="submit"
+            disabled={busy}
+            style={{
+              width: "100%", padding: "11px", borderRadius: 8, border: "none",
+              background: busy ? "#94a3b8" : "#1e293b", color: "#fff",
+              fontSize: 14, fontWeight: 600, cursor: busy ? "not-allowed" : "pointer",
+              marginTop: 4, transition: "background .2s",
+            }}
+          >
+            {busy ? "Saqlanmoqda..." : "Parolni saqlash"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminPanel() {
   const nav  = useNavigate();
   const loc  = useLocation();
@@ -331,7 +410,8 @@ export default function AdminPanel() {
   const links = [
     { to: "/admin",        label: "📊 Dashboard" },
     { to: "/admin/chats",  label: "💬 Suhbatlar" },
-    { to: "/admin/users",  label: "👥 Foydalanuvchilar" },
+    { to: "/admin/users",    label: "👥 Foydalanuvchilar" },
+    { to: "/admin/settings", label: "⚙️ Sozlamalar" },
   ];
 
   return (
@@ -358,7 +438,8 @@ export default function AdminPanel() {
           <Routes>
             <Route index        element={<Overview />} />
             <Route path="chats" element={<ChatsList />} />
-            <Route path="users" element={<UsersList />} />
+            <Route path="users"    element={<UsersList />} />
+            <Route path="settings" element={<Settings />} />
           </Routes>
         </div>
       </div>

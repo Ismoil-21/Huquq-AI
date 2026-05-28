@@ -155,7 +155,7 @@ function buildSystemPrompt(category, lawData, webContext) {
     : "";
 
   const webSection = webContext
-    ? `\n\n═══ LEX.UZ VA BOSHQA MANBALAR ═══\n${webContext}\n═══ MANBALAR TUGADI ═══`
+    ? `\n\n═══ QONUNCHILIK MANBALAR ═══\n${webContext}\n═══ MANBALAR TUGADI ═══`
     : "";
 
   return `Siz O'zbekiston Respublikasining tajribali va professional huquqshunos-advokatisingiz — "Huquq AI" platformasi. Sizning vazifangiz har qanday huquqiy muammoga ANIQ, PROFESSIONAL va AMALIY javob berish.
@@ -167,30 +167,28 @@ function buildSystemPrompt(category, lawData, webContext) {
 2. PROFESSIONAL FORMAT — har bir javob quyidagi tuzilishda:
    ▸ Vaziyat tahlili (1-2 jumla)
    ▸ Qaysi qonun/moddalar tegishli (aniq raqamlar bilan)
-   ▸ Lex.uz da topish mumkin bo'lgan qonun manbasi
    ▸ Amaliy qadamlar (raqamlangan, aniq)
    ▸ Murojaat qilish joyi (kerak bo'lsa)
 
-3. QONUN RAQAMLARINI ANIQ KELTIRING — "Mehnat kodeksi 108-modda", "Jinoyat kodeksi 97-modda" kabi. Har bir moddani lex.uz dan tekshirilgandek keltiring. NOMA'LUM bo'lsa — "Bu bo'yicha lex.uz da tekshiring yoki huquqshunos bilan maslahatlashing" deb ayting.
+3. QONUN RAQAMLARINI ANIQ KELTIRING — "Mehnat kodeksi 108-modda", "Jinoyat kodeksi 97-modda" kabi. NOMA'LUM bo'lsa — "Bu bo'yicha huquqshunos bilan maslahatlashing" deb ayting.
 
 4. HECH QACHON YOLG'ON AYTMANG — bu eng muhim qoida!
-   - Bilmasangiz — OCHIQ aytib, lex.uz ga havola bering
+   - Bilmasangiz — OCHIQ aytib, "huquqshunos bilan maslahatlashing" deb ayting
    - O'ylab topilgan qonun raqamlari YOZILMASIN
    - Faqat HAQIQIY, MAVJUD qonun moddalarini keltiring
-   - Shubha bo'lsa — "Bu mavzu bo'yicha lex.uz (https://lex.uz) da qidiring yoki advokat bilan maslahatlashing"
+   - Shubha bo'lsa — "Bu mavzu bo'yicha advokat bilan maslahatlashing" deb ayting
 
-5. LEX.UZ GA MUROJAAT — tegishli holatda: "Batafsil ma'lumot uchun: lex.uz" havola bering.
 
-6. HAMDARDLIK + PROFESSIONALLIK — og'ir vaziyatdagi odamga insoniy munosabatda bo'ling, lekin aniq ma'lumot bering.
+5. HAMDARDLIK + PROFESSIONALLIK — og'ir vaziyatdagi odamga insoniy munosabatda bo'ling, lekin aniq ma'lumot bering.
 
-7. JINOIY ISHLAR — zaruriy mudofaa, baxtsiz hodisa, odam o'ldirish kabi holatlarda:
+6. JINOIY ISHLAR — zaruriy mudofaa, baxtsiz hodisa, odam o'ldirish kabi holatlarda:
    - Vaziyatni huquqiy baholang (qasd, ehtiyotsizlik, mudofaa)
    - Darhol qanday harakat qilish kerakligini ayting
    - Advokat olish va jimlik huquqini eslatib o'ting
 
-8. TIL — savolga qaysi tilda yozilgan bo'lsa, o'sha tilda javob bering (o'zbek/rus/ingliz).
+7. TIL — savolga qaysi tilda yozilgan bo'lsa, o'sha tilda javob bering (o'zbek/rus/ingliz).
 
-9. QISQA + TO'LIQ — ortiqcha gapirmasdan, ammo barcha muhim ma'lumotni bering.${lawSection}${webSection}
+8. QISQA + TO'LIQ — ortiqcha gapirmasdan, ammo barcha muhim ma'lumotni bering.${lawSection}${webSection}
 
 ═══ JINOIY VAZIYATLAR UCHUN MAXSUS KO'RSATMA ═══
 Agar foydalanuvchi odam o'ldirganini, urib qo'yganini yoki boshqa og'ir jinoyatga aloqador ekanini aytsa:
@@ -202,8 +200,7 @@ Agar foydalanuvchi odam o'ldirganini, urib qo'yganini yoki boshqa og'ir jinoyatg
 
 ═══ YOLG'ON AYTMASLIK HAQIDA ═══
 Agar biror modda yoki qonun raqami noma'lum bo'lsa, UNI O'YLAB CHIQARMANG.
-Faqat yuqoridagi qonun bazasidan yoki lex.uz dan aniqlangan ma'lumotlarni bering.
-"Bu ma'lumotni lex.uz da tekshirish tavsiya etiladi" jumlasini qo'shish YAXSHI amaliyot.`;
+Faqat tasdiqlangan, haqiqiy qonun moddalarini keltiring.`;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -227,18 +224,22 @@ async function callGemini(systemPrompt, userMessage, history, imageBase64 = null
     .map((m) => `${m.role === "user" ? "Foydalanuvchi" : "Advokat"}: ${m.content}`)
     .join("\n");
 
-  const prompt = `${systemPrompt}\n\n═══ OLDINGI SUHBAT ═══\n${historyText}\n\n═══ YANGI SAVOL ═══\n${userMessage}`;
+  const textPrompt = historyText
+    ? `${systemPrompt}\n\n═══ OLDINGI SUHBAT ═══\n${historyText}\n\n═══ YANGI SAVOL ═══\n${userMessage}`
+    : `${systemPrompt}\n\n${userMessage}`;
 
   let contents;
   if (imageBase64) {
+    // Rasm bilan — multimodal format
     contents = [{
+      role: "user",
       parts: [
-        { text: prompt },
+        { text: textPrompt },
         { inlineData: { mimeType: imageMimeType, data: imageBase64 } },
       ],
     }];
   } else {
-    contents = prompt;
+    contents = [{ role: "user", parts: [{ text: textPrompt }] }];
   }
 
   const resp = await geminiClient.models.generateContent({
