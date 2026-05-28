@@ -8,8 +8,6 @@ const NAV = [
   { to: "/",             icon: "◈",  label: "Dashboard"            },
   { to: "/chats",        icon: "◉",  label: "Suhbatlar"            },
   { to: "/users",        icon: "⬡",  label: "Foydalanuvchilar"     },
-  { to: "/visitors",     icon: "◎",  label: "Tashrif buyuruvchilar"},
-  { to: "/logins",       icon: "⬢",  label: "Kirish tarixi"        },
   { to: "/support",      icon: "✉",  label: "Texnik yordam"       },
   { to: "/settings",     icon: "◬",  label: "Sozlamalar"           },
 ];

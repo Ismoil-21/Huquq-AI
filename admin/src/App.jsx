@@ -7,8 +7,6 @@ import Dashboard        from "./pages/Dashboard";
 import Chats            from "./pages/Chats";
 import ChatDetail       from "./pages/ChatDetail";
 import Users            from "./pages/Users";
-import LoginLogs        from "./pages/LoginLogs";
-import Visitors         from "./pages/Visitors";
 import Settings         from "./pages/Settings";
 import SupportMessages  from "./pages/SupportMessages";
 
@@ -31,8 +29,6 @@ export default function App() {
         <Route path="chats"            element={<Chats />} />
         <Route path="chats/:sessionId" element={<ChatDetail />} />
         <Route path="users"            element={<Users />} />
-        <Route path="visitors"         element={<Visitors />} />
-        <Route path="logins"           element={<LoginLogs />} />
         <Route path="support"          element={<SupportMessages />} />
         <Route path="settings"         element={<Settings />} />
       </Route>
