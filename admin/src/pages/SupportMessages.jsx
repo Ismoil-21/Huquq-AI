@@ -22,7 +22,10 @@ export default function SupportMessages() {
   async function loadMessages() {
     try {
       setLoading(true);
-      const { data } = await api.get("/support");
+      const { data } = await api.get("/support", {
+        headers: { 'Cache-Control': 'no-cache' },
+        params: { _t: Date.now() }
+      });
       const messages = Array.isArray(data) ? data : [];
       setMessages(messages);
       // Mark all pending messages as read

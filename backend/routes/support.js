@@ -40,6 +40,7 @@ router.post("/", async (req, res) => {
 router.get("/", async (req, res) => {
   try {
     const messages = await SupportMessage.find().sort({ createdAt: -1 });
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     return res.json(messages);
   } catch (err) {
     console.error("get support messages error:", err.message);
