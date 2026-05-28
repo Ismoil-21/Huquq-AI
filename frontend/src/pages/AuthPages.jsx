@@ -202,6 +202,12 @@ function SupportModal({ onClose }) {
       setSuccess(true);
       setTimeout(() => onClose(), 2000);
     } catch (ex) {
+      // 204 No Content ham success deb hisoblaymiz
+      if (ex.response?.status === 204) {
+        setSuccess(true);
+        setTimeout(() => onClose(), 2000);
+        return;
+      }
       const errorMsg = ex.response?.data?.error;
       if (errorMsg?.includes("email") || errorMsg?.includes("Email") ||
           errorMsg?.includes("пользователь") || errorMsg?.includes("user")) {
