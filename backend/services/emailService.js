@@ -156,10 +156,6 @@ async function sendPasswordResetEmail(
         html,
         text: `Yangi parol: ${newPassword}`,
       }),
-
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("EMAIL_TIMEOUT")), 15000),
-      ),
     ]);
 
     console.log("Password reset email sent:", info.messageId);
