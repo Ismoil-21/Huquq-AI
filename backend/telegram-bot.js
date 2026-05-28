@@ -32,7 +32,7 @@ const LANG_INSTRUCTION = {
 const tg = {
   uz: {
     welcome: `🏛️ Mening Huquqim botiga xush kelibsiz!\n\nMen O'zbekiston qonunchiligi bo'yicha AI maslahatchi botman.\n\nHuquqiy muammongizni yozing — javob beraman! ✅`,
-    not_registered: `🏛️ <b>Mening Huquqim</b> — AI Huquqiy Maslahat\n\n🔓 <b>Bepul foydalanish uchun ro'yxatdan o'ting!</b>\n\n✅ Kuniga ${20} ta bepul savol\n✅ Barcha suhbatlar saqlanadi\n✅ O'zbek, Rus, Ingliz tillarida\n✅ 24/7 ishlaydi\n\n👇 Quyidagi tugmani bosib ro'yxatdan o'ting:`,
+    not_registered: `🏛️ <b>Mening Huquqim</b> — AI Huquqiy Maslahat\n\n🔓 <b>Bepul foydalanish uchun ro'yxatdan o'ting!</b>\n\n✅ Kuniga ${20} ta bepul savol\n✅ O'zbek, Rus, Ingliz tillarida\n✅ 24/7 ishlaydi\n\n👇 Quyidagi tugmani bosib ro'yxatdan o'ting:`,
     new_ready: "✅ Yangi savol uchun tayyor!",
     new_prompt: "✅ Yangi savol! Muammongizni yozing.",
     about: `🏛️ Mening Huquqim\n\nO'zbekiston qonunchiligi bo'yicha AI maslahatchi.\n\n🌐 Sayt: ${SITE_URL}\n⚠️ Muhim ishlarda advokat bilan maslahatlashing.`,
