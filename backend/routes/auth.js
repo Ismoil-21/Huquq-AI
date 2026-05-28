@@ -431,6 +431,7 @@ module.exports = router;
 router.post("/telegram-link-token", require("../middleware/auth").userGuard, async (req, res) => {
   try {
     const crypto = require("crypto");
+    const { telegramUsername } = req.body;
     const token  = crypto.randomBytes(20).toString("hex");
     const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 daqiqa
 
@@ -439,6 +440,9 @@ router.post("/telegram-link-token", require("../middleware/auth").userGuard, asy
 
     user.otpCode    = `tglink_${token}`;
     user.otpExpires = expires;
+    if (telegramUsername) {
+      user.pendingTelegramUsername = telegramUsername.replace("@", "").trim();
+    }
     await user.save();
 
     const botUsername = process.env.TELEGRAM_BOT_USERNAME || "mening_huquqlarim_bot";

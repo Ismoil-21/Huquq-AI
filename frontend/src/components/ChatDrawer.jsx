@@ -260,8 +260,8 @@ export default function ChatDrawer() {
     setInput("");
     setView("chat");
 
-    const sid = sessionId || newUserSessionId(uid);
-    if (!sessionId) { setSessionId(sid); setActiveSessionId(sid, uid); }
+    // Use existing sessionId or let backend create new one
+    const sid = sessionId || null;
 
     // Rasim preview ni ko'rsatish
     const sentImage = imagePreview;
@@ -283,7 +283,7 @@ export default function ChatDrawer() {
         // FormData bilan yuborish
         const formData = new FormData();
         formData.append("message", text);
-        formData.append("sessionId", sid);
+        if (sid) formData.append("sessionId", sid);
         formData.append("lang", lang);
         formData.append("image", fileToSend);
         const resp = await api.post("/chat", formData, {

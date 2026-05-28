@@ -29,6 +29,7 @@ export default function ProfileModal({ onClose }) {
   const [telegramMsg, setTelegramMsg] = useState({ type: "", text: "" });
   const [telegramBusy, setTelegramBusy] = useState(false);
   const [telegramStatus, setTelegramStatus] = useState(null);
+  const [telegramUsername, setTelegramUsername] = useState("");
 
 
 
@@ -111,9 +112,10 @@ export default function ProfileModal({ onClose }) {
     setTelegramBusy(true);
     setTelegramMsg({ type: "", text: "" });
     try {
-      const { data } = await api.post("/auth/telegram-link-token");
+      const { data } = await api.post("/auth/telegram-link-token", { telegramUsername });
       window.open(data.botUrl, "_blank");
       setTelegramMsg({ type: "success", text: t.telegram_opening });
+      setTelegramUsername("");
     } catch (err) {
       setTelegramMsg({ type: "error", text: err.response?.data?.error || t.error_generic });
     } finally {
@@ -266,7 +268,7 @@ export default function ProfileModal({ onClose }) {
           {tab === "telegram" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               {telegramMsg.text && <Alert type={telegramMsg.type}>{telegramMsg.text}</Alert>}
-              
+
               {telegramStatus?.telegramVerified ? (
                 <div style={{ textAlign: "center", padding: "1.5rem" }}>
                   <div style={{ fontSize: 48, marginBottom: "0.5rem" }}>✅</div>
@@ -289,8 +291,15 @@ export default function ProfileModal({ onClose }) {
                       <li>{t.telegram_link_step4}</li>
                     </ol>
                   </div>
-                  <Btn onClick={handleTelegramLinkToken} disabled={telegramBusy}>
-                    {telegramBusy ? t.telegram_loading : t.telegram_link_btn}
+                  <Field label="Telegram username">
+                    <Input
+                      value={telegramUsername}
+                      onChange={e => setTelegramUsername(e.target.value)}
+                      placeholder="@username"
+                    />
+                  </Field>
+                  <Btn onClick={handleTelegramLinkToken} disabled={telegramBusy || !telegramUsername.trim()}>
+                    {telegramBusy ? t.telegram_loading : "Tasdiqlash"}
                   </Btn>
                 </>
               )}
