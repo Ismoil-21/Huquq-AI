@@ -69,9 +69,10 @@ const UserSchema = new mongoose.Schema(
     // Limit
     dailyLimit:       { type: Number, default: 20 },   // default: 20 ta savol/kun
     // Telegram
-    telegramId:       { type: String, sparse: true },
-    telegramVerified: { type: Boolean, default: false },
-    telegramUsername: { type: String, default: null },
+    telegramId:               { type: String, sparse: true },
+    telegramVerified:         { type: Boolean, default: false },
+    telegramUsername:         { type: String, default: null },
+    pendingTelegramUsername:  { type: String, default: null },
     // Push Notifications (mobile)
     pushToken:          { type: String, default: null },
     pushPlatform:       { type: String, enum: ["ios", "android", "unknown", null], default: null },
