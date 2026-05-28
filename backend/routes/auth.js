@@ -441,7 +441,9 @@ router.post("/telegram-link-token", require("../middleware/auth").userGuard, asy
     user.otpCode    = `tglink_${token}`;
     user.otpExpires = expires;
     if (telegramUsername) {
-      user.pendingTelegramUsername = telegramUsername.replace("@", "").trim();
+      const normalizedUsername = telegramUsername.replace("@", "").trim();
+      user.pendingTelegramUsername = normalizedUsername;
+      console.log(`💾 Saved pendingTelegramUsername for user ${user.username}: ${normalizedUsername}`);
     }
     await user.save();
 

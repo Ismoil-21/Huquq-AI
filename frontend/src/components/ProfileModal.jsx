@@ -270,6 +270,9 @@ export default function ProfileModal({ onClose }) {
                       @{telegramStatus.telegramUsername}
                     </p>
                   )}
+                  <p style={{ margin: "1rem 0 0", color: "#999", fontSize: "0.8rem", fontStyle: "italic" }}>
+                    Telegram hisob allaqachon bog'langan. Boshqa username kiritish mumkin emas.
+                  </p>
                 </div>
               ) : (
                 <>
@@ -287,9 +290,10 @@ export default function ProfileModal({ onClose }) {
                       value={telegramUsername}
                       onChange={e => setTelegramUsername(e.target.value)}
                       placeholder="@username"
+                      disabled={telegramStatus?.telegramVerified}
                     />
                   </Field>
-                  <Btn onClick={handleTelegramLinkToken} disabled={telegramBusy || !telegramUsername.trim()}>
+                  <Btn onClick={handleTelegramLinkToken} disabled={telegramBusy || !telegramUsername.trim() || telegramStatus?.telegramVerified}>
                     {telegramBusy ? t.telegram_loading : "Tasdiqlash"}
                   </Btn>
                 </>
