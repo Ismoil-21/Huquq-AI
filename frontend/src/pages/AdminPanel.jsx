@@ -243,104 +243,6 @@ function ChatsList() {
   );
 }
 
-
-// ── RESET PASSWORD MODAL ──────────────────────────────────────────────────────
-function ResetPasswordModal({ user, onClose, onDone }) {
-  const [np,    setNp]    = useState("");
-  const [conf,  setConf]  = useState("");
-  const [show,  setShow]  = useState(false);
-  const [msg,   setMsg]   = useState({ type: "", text: "" });
-  const [busy,  setBusy]  = useState(false);
-
-  function genPassword() {
-    const chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789@#!";
-    const pwd = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-    setNp(pwd); setConf(pwd);
-  }
-
-  async function handleSave() {
-    if (!np) return setMsg({ type: "error", text: "Yangi parol kiriting" });
-    if (np.length < 6) return setMsg({ type: "error", text: "Parol kamida 6 ta belgi bo'lsin" });
-    if (np !== conf)   return setMsg({ type: "error", text: "Parollar mos kelmadi" });
-    setBusy(true); setMsg({ type: "", text: "" });
-    try {
-      const { data } = await adminApi.patch(`/admin/users/${user._id}/reset-password`, { newPassword: np });
-      setMsg({ type: "success", text: data.emailSent ? `✅ Yangi parol email ga yuborildi (${data.emailAddress})` : "✅ Parol o'zgartirildi (email yuborilmadi)" });
-      setTimeout(() => { onDone(); onClose(); }, 1800);
-    } catch (err) {
-      setMsg({ type: "error", text: err.response?.data?.error || "Xatolik yuz berdi" });
-    } finally { setBusy(false); }
-  }
-
-  const ovl = { position:"fixed", inset:0, background:"rgba(0,0,0,.55)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", padding:16 };
-  const box = { background:"#1a2235", borderRadius:16, padding:"1.5rem", width:"100%", maxWidth:440, color:"#e2e8f0" };
-  const inp = { width:"100%", padding:"10px 14px", borderRadius:8, border:"1.5px solid #334155", background:"#0f172a", color:"#e2e8f0", fontSize:14, boxSizing:"border-box", outline:"none" };
-  const lbl = { display:"block", fontSize:12, fontWeight:600, color:"#94a3b8", marginBottom:6, textTransform:"uppercase", letterSpacing:".05em" };
-
-  return (
-    <div style={ovl} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={box}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1.25rem" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <div style={{ background:"#3b82f6", borderRadius:10, padding:"8px 10px", fontSize:18 }}>🔑</div>
-            <div>
-              <div style={{ fontWeight:700, fontSize:16 }}>Parolni reset qilish</div>
-              <div style={{ fontSize:12, color:"#64748b" }}>@{user.username}</div>
-            </div>
-          </div>
-          <button onClick={onClose} style={{ background:"none", border:"none", color:"#64748b", fontSize:20, cursor:"pointer" }}>×</button>
-        </div>
-
-        <div style={{ background:"#0f172a", borderRadius:10, padding:"12px 16px", marginBottom:"1.25rem", display:"flex", alignItems:"center", gap:12 }}>
-          <div style={{ width:36, height:36, borderRadius:8, background:"#3b82f6", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700, fontSize:15 }}>
-            {user.username?.[0]?.toUpperCase()}
-          </div>
-          <div>
-            <div style={{ fontWeight:600, fontSize:14 }}>{user.fullName || user.username}</div>
-            <div style={{ fontSize:12, color:"#64748b", fontFamily:"monospace" }}>{user.email}</div>
-          </div>
-        </div>
-
-        {msg.text && (
-          <div style={{ padding:"10px 14px", borderRadius:8, marginBottom:"1rem", fontSize:13,
-            background: msg.type==="success" ? "#052e16" : "#2d0a0a",
-            color:      msg.type==="success" ? "#4ade80"  : "#f87171",
-            border:     `1px solid ${msg.type==="success" ? "#166534" : "#7f1d1d"}`,
-          }}>{msg.text}</div>
-        )}
-
-        <div style={{ marginBottom:"1rem" }}>
-          <label style={lbl}>Yangi parol</label>
-          <div style={{ position:"relative" }}>
-            <input style={{ ...inp, paddingRight:42 }} type={show ? "text" : "password"} value={np} onChange={e => setNp(e.target.value)} placeholder="Yangi parol" />
-            <button onClick={() => setShow(s => !s)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:"#64748b", cursor:"pointer", fontSize:16 }}>
-              {show ? "🙈" : "👁"}
-            </button>
-          </div>
-        </div>
-
-        <div style={{ marginBottom:"1rem" }}>
-          <label style={lbl}>Parolni tasdiqlash</label>
-          <input style={inp} type={show ? "text" : "password"} value={conf} onChange={e => setConf(e.target.value)} placeholder="Parolni takrorlang" />
-        </div>
-
-        <button onClick={genPassword} style={{ width:"100%", padding:"10px", borderRadius:8, border:"1.5px dashed #334155", background:"transparent", color:"#94a3b8", fontSize:13, cursor:"pointer", marginBottom:"1.25rem" }}>
-          🔄 Avtomatik parol yaratish
-        </button>
-
-        <div style={{ display:"flex", gap:10 }}>
-          <button onClick={onClose} disabled={busy} style={{ flex:1, padding:"11px", borderRadius:8, border:"1px solid #334155", background:"transparent", color:"#94a3b8", fontSize:14, cursor:"pointer" }}>
-            Bekor qilish
-          </button>
-          <button onClick={handleSave} disabled={busy} style={{ flex:1, padding:"11px", borderRadius:8, border:"none", background: busy ? "#1d4ed8" : "#2563eb", color:"#fff", fontSize:14, fontWeight:600, cursor: busy ? "not-allowed" : "pointer" }}>
-            {busy ? "Saqlanmoqda..." : "💾 Saqlash"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── USERS LIST ────────────────────────────────────────────────────────────────
 function UsersList() {
   const [users,   setUsers]   = useState([]);
@@ -349,7 +251,6 @@ function UsersList() {
   const [pages,   setPages]   = useState(1);
   const [search,  setSearch]  = useState("");
   const [loading, setLoading] = useState(false);
-  const [resetUser, setResetUser] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -396,7 +297,6 @@ function UsersList() {
                 <td><span className={u.isBlocked ? s.badgeBlock : s.badgeActive}>{u.isBlocked ? "Bloklangan" : "Faol"}</span></td>
                 <td className={s.actions}>
                   <button className={u.isBlocked ? s.unblockBtn : s.blockBtn} onClick={() => toggleBlock(u._id)}>{u.isBlocked ? "Ochish" : "Bloklash"}</button>
-                  <button className={s.resetBtn} onClick={() => setResetUser(u)} title="Parolni reset qilish">🔑</button>
                   <button className={s.delBtn} onClick={() => deleteUser(u._id)}>🗑</button>
                 </td>
               </tr>
@@ -412,7 +312,6 @@ function UsersList() {
           <button disabled={page >= pages} onClick={() => setPage(p=>p+1)}>Keyingi →</button>
         </div>
       )}
-      {resetUser && <ResetPasswordModal user={resetUser} onClose={() => setResetUser(null)} onDone={load} />}
     </div>
   );
 }

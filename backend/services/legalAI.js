@@ -116,15 +116,152 @@ const LAW_DATABASE = {
 };
 
 const CATEGORY_MAP = [
-  { id: "mehnat",       kw: ["ish ", "maosh", "ishdan", "ta'til", "xodim", "ish haqi", "mehnat", "bo'shatish", "ish beruvchi", "xodim", "ishchi", "labor", "зарплата", "работа", "уволить"] },
-  { id: "oila",         kw: ["ajralish", "nikoh", "aliment", "bola", "oila", "zags", "turmush", "divorce", "marriage", "развод", "алименты", "семья"] },
-  { id: "meros",        kw: ["meros", "vasiyat", "notarius", "vafot", "merosxo'r", "inheritance", "наследство", "завещание"] },
-  { id: "yer",          kw: ["yer", "kadastr", "hovli", "uchastka", "qishloq", "dala", "land", "земля", "участок"] },
-  { id: "istemolchi",   kw: ["tovar", "qaytarish", "sotuvchi", "kafolat", "sifatsiz", "do'kon", "xaridor", "consumer", "товар", "возврат"] },
-  { id: "jinoiy",       kw: ["jinoyat", "o'g'irlik", "firib", "politsiya", "pora", "shikoyat", "o'ldi", "urdi", "kaltakladi", "zo'rlash", "tahdid", "crime", "murder", "killed", "arrested", "преступление", "убийство", "арест"] },
-  { id: "tadbirkorlik", kw: ["biznes", "tadbirkor", "kompaniya", "soliq", "ooo", "ip", "business", "налог", "компания"] },
-  { id: "uy_joy",       kw: ["kvartira", "uy", "ijara", "mulk", "ko'chmas", "xonadon", "ijarakor", "apartment", "rent", "квартира", "аренда"] },
-  { id: "ma_muriy",     kw: ["hokimiyat", "davlat", "korrupsiya", "mansabdor", "sud", "ariza", "shikoyat", "government", "чиновник"] },
+  {
+    id: "mehnat",
+    kw: [
+      "ish ",
+      "maosh",
+      "ishdan",
+      "ta'til",
+      "xodim",
+      "ish haqi",
+      "mehnat",
+      "bo'shatish",
+      "ish beruvchi",
+      "xodim",
+      "ishchi",
+      "labor",
+      "зарплата",
+      "работа",
+      "уволить",
+    ],
+  },
+  {
+    id: "oila",
+    kw: [
+      "ajralish",
+      "nikoh",
+      "aliment",
+      "bola",
+      "oila",
+      "zags",
+      "turmush",
+      "divorce",
+      "marriage",
+      "развод",
+      "алименты",
+      "семья",
+    ],
+  },
+  {
+    id: "meros",
+    kw: [
+      "meros",
+      "vasiyat",
+      "notarius",
+      "vafot",
+      "merosxo'r",
+      "inheritance",
+      "наследство",
+      "завещание",
+    ],
+  },
+  {
+    id: "yer",
+    kw: [
+      "yer",
+      "kadastr",
+      "hovli",
+      "uchastka",
+      "qishloq",
+      "dala",
+      "land",
+      "земля",
+      "участок",
+    ],
+  },
+  {
+    id: "istemolchi",
+    kw: [
+      "tovar",
+      "qaytarish",
+      "sotuvchi",
+      "kafolat",
+      "sifatsiz",
+      "do'kon",
+      "xaridor",
+      "consumer",
+      "товар",
+      "возврат",
+    ],
+  },
+  {
+    id: "jinoiy",
+    kw: [
+      "jinoyat",
+      "o'g'irlik",
+      "firib",
+      "politsiya",
+      "pora",
+      "shikoyat",
+      "o'ldi",
+      "urdi",
+      "kaltakladi",
+      "zo'rlash",
+      "tahdid",
+      "crime",
+      "murder",
+      "killed",
+      "arrested",
+      "преступление",
+      "убийство",
+      "арест",
+    ],
+  },
+  {
+    id: "tadbirkorlik",
+    kw: [
+      "biznes",
+      "tadbirkor",
+      "kompaniya",
+      "soliq",
+      "ooo",
+      "ip",
+      "business",
+      "налог",
+      "компания",
+    ],
+  },
+  {
+    id: "uy_joy",
+    kw: [
+      "kvartira",
+      "uy",
+      "ijara",
+      "mulk",
+      "ko'chmas",
+      "xonadon",
+      "ijarakor",
+      "apartment",
+      "rent",
+      "квартира",
+      "аренда",
+    ],
+  },
+  {
+    id: "ma_muriy",
+    kw: [
+      "hokimiyat",
+      "davlat",
+      "korrupsiya",
+      "mansabdor",
+      "sud",
+      "ariza",
+      "shikoyat",
+      "government",
+      "чиновник",
+    ],
+  },
 ];
 
 function detectCategory(text = "") {
@@ -141,7 +278,7 @@ function getLawsForCategory(cat) {
 
 function cleanHistory(history = []) {
   return history.slice(-8).map((m) => ({
-    role:    m.role,
+    role: m.role,
     content: String(m.content || "").slice(0, 500),
   }));
 }
@@ -178,7 +315,6 @@ function buildSystemPrompt(category, lawData, webContext) {
    - Faqat HAQIQIY, MAVJUD qonun moddalarini keltiring
    - Shubha bo'lsa — "Bu mavzu bo'yicha advokat bilan maslahatlashing" deb ayting
 
-
 5. HAMDARDLIK + PROFESSIONALLIK — og'ir vaziyatdagi odamga insoniy munosabatda bo'ling, lekin aniq ma'lumot bering.
 
 6. JINOIY ISHLAR — zaruriy mudofaa, baxtsiz hodisa, odam o'ldirish kabi holatlarda:
@@ -188,7 +324,9 @@ function buildSystemPrompt(category, lawData, webContext) {
 
 7. TIL — savolga qaysi tilda yozilgan bo'lsa, o'sha tilda javob bering (o'zbek/rus/ingliz).
 
-8. QISQA + TO'LIQ — ortiqcha gapirmasdan, ammo barcha muhim ma'lumotni bering.${lawSection}${webSection}
+8. QISQA + TO'LIQ — ortiqcha gapirmasdan, ammo barcha muhim ma'lumotni bering.
+
+9. LEX.UZ HAQIDA — Hech qachon "lex.uz" saytiga murojaat qilishni tavsiya etmang, hech qachon lex.uz havolasini bermang va lex.uz platformasini tilga olmang. Faqat O'zbekiston qonunlari va moddalarini to'g'ridan-to'g'ri keltiring.${lawSection}${webSection}
 
 ═══ JINOIY VAZIYATLAR UCHUN MAXSUS KO'RSATMA ═══
 Agar foydalanuvchi odam o'ldirganini, urib qo'yganini yoki boshqa og'ir jinoyatga aloqador ekanini aytsa:
@@ -209,55 +347,105 @@ Faqat tasdiqlangan, haqiqiy qonun moddalarini keltiring.`;
 async function callGroq(messages) {
   if (!groqClient) throw new Error("GROQ_API_KEY sozlanmagan");
   const resp = await groqClient.chat.completions.create({
-    model:       process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+    model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
     messages,
     temperature: 0.15,
-    max_tokens:  1500,
+    max_tokens: 1500,
   });
   return resp.choices?.[0]?.message?.content?.trim() || "";
 }
 
-async function callGemini(systemPrompt, userMessage, history, imageBase64 = null, imageMimeType = "image/jpeg") {
+// BUG FIX #1: Gemini @google/genai v2.x API to'g'ri sintaksis
+async function callGemini(
+  systemPrompt,
+  userMessage,
+  history,
+  imageBase64 = null,
+  imageMimeType = "image/jpeg",
+) {
   if (!geminiClient) throw new Error("GEMINI_API_KEY sozlanmagan");
 
   const historyText = cleanHistory(history)
-    .map((m) => `${m.role === "user" ? "Foydalanuvchi" : "Advokat"}: ${m.content}`)
+    .map(
+      (m) => `${m.role === "user" ? "Foydalanuvchi" : "Advokat"}: ${m.content}`,
+    )
     .join("\n");
 
   const textPrompt = historyText
     ? `${systemPrompt}\n\n═══ OLDINGI SUHBAT ═══\n${historyText}\n\n═══ YANGI SAVOL ═══\n${userMessage}`
     : `${systemPrompt}\n\n${userMessage}`;
 
+  const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+
   let contents;
   if (imageBase64) {
-    // Rasm bilan — multimodal format
-    contents = [{
-      role: "user",
-      parts: [
-        { text: textPrompt },
-        { inlineData: { mimeType: imageMimeType, data: imageBase64 } },
-      ],
-    }];
+    // BUG FIX: @google/genai v2.x da to'g'ri multimodal format
+    contents = [
+      {
+        role: "user",
+        parts: [
+          { text: textPrompt },
+          {
+            inlineData: {
+              mimeType: imageMimeType,
+              data: imageBase64,
+            },
+          },
+        ],
+      },
+    ];
   } else {
-    contents = [{ role: "user", parts: [{ text: textPrompt }] }];
+    contents = [
+      {
+        role: "user",
+        parts: [{ text: textPrompt }],
+      },
+    ];
   }
 
+  // BUG FIX: @google/genai v2.x da to'g'ri API chaqiruvi
   const resp = await geminiClient.models.generateContent({
-    model:    process.env.GEMINI_MODEL || "gemini-2.5-flash",
+    model,
     contents,
-    config: { temperature: 0.15, maxOutputTokens: 1500 },
+    generationConfig: {
+      temperature: 0.15,
+      maxOutputTokens: 1500,
+    },
   });
 
-  return resp.text?.trim() || "";
+  // BUG FIX: response.text() method yoki candidates orqali olish
+  if (resp.text) return resp.text.trim();
+
+  // fallback: candidates array dan olish
+  const candidate = resp.candidates?.[0];
+  const text = candidate?.content?.parts?.[0]?.text || "";
+  return text.trim();
 }
 
-async function generateAnswer(systemPrompt, userMessage, history, imageBase64 = null, imageMimeType = "image/jpeg") {
+async function generateAnswer(
+  systemPrompt,
+  userMessage,
+  history,
+  imageBase64 = null,
+  imageMimeType = "image/jpeg",
+) {
   if (imageBase64) {
+    // Rasm bor — avval Gemini, keyin Groq (Groq rasm ko'rmaydi)
     try {
-      return await callGemini(systemPrompt, userMessage, history, imageBase64, imageMimeType);
+      const result = await callGemini(
+        systemPrompt,
+        userMessage,
+        history,
+        imageBase64,
+        imageMimeType,
+      );
+      if (result) return result;
+      throw new Error("Gemini bo'sh javob qaytardi");
     } catch (err) {
       console.error("Gemini vision error:", err.message);
-      throw err;
+      throw new Error(
+        "Rasmni tahlil qilishda xatolik yuz berdi. Gemini API kalitini tekshiring.",
+      );
     }
   }
 
@@ -281,9 +469,14 @@ async function generateAnswer(systemPrompt, userMessage, history, imageBase64 = 
   }
 }
 
-async function getLegalAdvice(userMessage, history = [], imageBase64 = null, imageMimeType = "image/jpeg") {
-  const category  = detectCategory(userMessage);
-  const lawData   = getLawsForCategory(category);
+async function getLegalAdvice(
+  userMessage,
+  history = [],
+  imageBase64 = null,
+  imageMimeType = "image/jpeg",
+) {
+  const category = detectCategory(userMessage);
+  const lawData = getLawsForCategory(category);
 
   let webResults = [];
   try {
@@ -292,19 +485,34 @@ async function getLegalAdvice(userMessage, history = [], imageBase64 = null, ima
     console.warn("Web search skipped:", err.message);
   }
 
-  const webContext   = formatSearchContext(webResults);
+  // BUG FIX #4: webContext dan lex.uz ma'lumotlarini olib tashlash
+  const filteredResults = webResults.filter((r) => {
+    const src = (r.source || "").toLowerCase();
+    const url = (r.url || "").toLowerCase();
+    return src !== "lex.uz" && !url.includes("lex.uz");
+  });
+
+  const webContext = formatSearchContext(filteredResults);
   const systemPrompt = buildSystemPrompt(category, lawData, webContext);
 
   const finalPrompt = imageBase64
-    ? systemPrompt + "\n\n9. Foydalanuvchi RASM yubordi — rasmni diqqat bilan tahlil qilib, unda ko'rinadigan hujjat, shartnoma, qaror yoki boshqa huquqiy ma'lumotga asosan maslahat bering."
+    ? systemPrompt +
+      "\n\n10. Foydalanuvchi RASM yubordi — rasmni diqqat bilan tahlil qilib, unda ko'rinadigan hujjat, shartnoma, qaror yoki boshqa huquqiy ma'lumotga asosan maslahat bering."
     : systemPrompt;
 
   try {
-    const answer = await generateAnswer(finalPrompt, userMessage, history, imageBase64, imageMimeType);
+    const answer = await generateAnswer(
+      finalPrompt,
+      userMessage,
+      history,
+      imageBase64,
+      imageMimeType,
+    );
 
     if (!answer) {
       return {
-        answer:   "Kechirasiz, javob shakllantirilmadi. Savolingizni boshqacha ifodalab qayta yuboring.",
+        answer:
+          "Kechirasiz, javob shakllantirilmadi. Savolingizni boshqacha ifodalab qayta yuboring.",
         category,
       };
     }
@@ -315,20 +523,23 @@ async function getLegalAdvice(userMessage, history = [], imageBase64 = null, ima
 
     if (err.status === 429) {
       return {
-        answer:   "AI serveri hozir band. Bir necha daqiqadan so'ng qayta urinib ko'ring.",
+        answer:
+          "AI serveri hozir band. Bir necha daqiqadan so'ng qayta urinib ko'ring.",
         category: "system",
       };
     }
 
     if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) {
       return {
-        answer:   "AI sozlanmagan. Administrator API kalitlarini .env faylga qo'shishi kerak.",
+        answer:
+          "AI sozlanmagan. Administrator API kalitlarini .env faylga qo'shishi kerak.",
         category: "system",
       };
     }
 
     return {
-      answer:   "AI vaqtincha ishlamayapti. Keyinroq qayta urinib ko'ring yoki Telegram botga murojaat qiling.",
+      answer:
+        "AI vaqtincha ishlamayapti. Keyinroq qayta urinib ko'ring yoki Telegram botga murojaat qiling.",
       category: "system",
     };
   }

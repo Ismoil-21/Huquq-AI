@@ -26,28 +26,37 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
-  // Har 30 soniyada /api/auth/me tekshirish — admin o'chirsa darhol logout
+  // BUG FIX #5: Har 5 soniyada /api/auth/me tekshirish — admin o'chirsa DARHOL logout
+  // (avval 30 soniya edi — endi 5 soniya)
   useEffect(() => {
     if (!user) return;
-    const interval = setInterval(async () => {
+
+    // Birinchi tekshirishni darhol qilish (sahifa yuklanganida)
+    const checkAuth = async () => {
       try {
         const token = localStorage.getItem("token");
         if (!token) return;
         const { data } = await api.get("/auth/me");
         if (data?.user) {
-          // User ma'lumotlari yangilangan bo'lsa localStorage ni yangilaymiz
           setUser((prev) => ({ ...prev, ...data.user }));
+          localStorage.setItem(
+            "user",
+            JSON.stringify({ ...user, ...data.user }),
+          );
         }
       } catch (err) {
         if (err.response?.status === 401) {
-          // Akkaunt o'chirilgan yoki token yaroqsiz — logout
+          // Akkaunt o'chirilgan yoki token yaroqsiz — darhol logout
           localStorage.removeItem("token");
           localStorage.removeItem("user");
           setUser(null);
-          window.location.href = "/login";
+          window.location.href = "/login?deleted=1";
         }
       }
-    }, 30000); // 30 soniya
+    };
+
+    // 5 soniyada bir tekshirish (avval 30 edi)
+    const interval = setInterval(checkAuth, 5000);
     return () => clearInterval(interval);
   }, [user]);
 
@@ -70,7 +79,6 @@ export function AuthProvider({ children }) {
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
     setUser(data.user);
-    // botUrl bo'lsa frontendga qaytaramiz — telegram ulanish ekrani uchun
     return { ...data.user, botUrl: data.botUrl || null };
   }, []);
 
@@ -92,7 +100,6 @@ export function AuthProvider({ children }) {
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
     setUser(data.user);
-    // Yangi ro'yxatdan o'tgan bo'lsa botUrl keladi, mavjud user bo'lsa null
     return { ...data.user, botUrl: data.botUrl || null };
   }, []);
 
