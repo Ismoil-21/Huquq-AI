@@ -78,9 +78,14 @@ function ResetPasswordModal({ user, onClose }) {
     setBusy(true);
     try {
       const { data } = await api.patch(`/admin/users/${user._id}/reset-password`, { newPassword: newPass });
-      const emailMsg = data.emailSent
-        ? ` ✉️ ${data.emailAddress} ga xabar yuborildi`
-        : user.email ? " (email yuborishda xato)" : " (email yo'q)";
+      let emailMsg = "";
+      if (data.emailSent) {
+        emailMsg = ` ✉️ ${data.emailAddress} ga xabar yuborildi`;
+      } else if (user.email) {
+        emailMsg = ` (email yuborishda xato${data.emailError ? ": " + data.emailError : ""})`;
+      } else {
+        emailMsg = " (email yo'q)";
+      }
       setOk((data.message || "Parol muvaffaqiyatli yangilandi") + emailMsg);
       setNewPass(""); setConfirm("");
     } catch (e) {
