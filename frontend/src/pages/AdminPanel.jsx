@@ -554,7 +554,7 @@ export default function AdminPanel() {
     { to: "/admin",        label: "📊 Dashboard" },
     { to: "/admin/chats",  label: "💬 Suhbatlar" },
     { to: "/admin/users",    label: "👥 Foydalanuvchilar" },
-    { to: "/admin/support", label: "📧 Xabarlar" },
+    { to: "/admin/support", label: "📧 Texnik yordam" },
     { to: "/admin/settings", label: "⚙️ Sozlamalar" },
   ];
 
