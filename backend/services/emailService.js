@@ -2,24 +2,12 @@
 const nodemailer = require("nodemailer");
 
 function createTransport() {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    throw new Error("SMTP_USER yoki SMTP_PASS .env da sozlanmagan");
-  }
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || "smtp.gmail.com",
-    port: parseInt(process.env.SMTP_PORT || "587"),
-    secure: process.env.SMTP_SECURE === "true",
+    service: "gmail",
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
-    tls: {
-      rejectUnauthorized: false,
-    },
-    connectionTimeout: 30000,
-    greetingTimeout: 30000,
-    socketTimeout: 30000,
-    family: 4, // Force IPv4 to avoid IPv6 connection issues
   });
 }
 
@@ -29,6 +17,10 @@ function generateOTP() {
 
 async function sendOTPEmail(toEmail, otp, fullName = "") {
   const transporter = createTransport();
+
+  await transporter.verify();
+  console.log("SMTP READY");
+
   const name = fullName || "Foydalanuvchi";
 
   console.log("SMTP Configuration:", {
@@ -107,9 +99,12 @@ async function sendPasswordResetEmail(
   const name = fullName || "Foydalanuvchi";
 
   console.log(
-    "Sending password reset email to:", toEmail,
-    "| SMTP user:", process.env.SMTP_USER ? "SET" : "NOT SET",
-    "| SMTP pass:", process.env.SMTP_PASS ? "SET" : "NOT SET",
+    "Sending password reset email to:",
+    toEmail,
+    "| SMTP user:",
+    process.env.SMTP_USER ? "SET" : "NOT SET",
+    "| SMTP pass:",
+    process.env.SMTP_PASS ? "SET" : "NOT SET",
   );
 
   const html = `
