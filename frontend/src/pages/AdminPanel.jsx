@@ -318,6 +318,149 @@ function UsersList() {
 
 // ── MAIN ADMIN PANEL ─────────────────────────────────────────────────────────
 
+// ── SUPPORT MESSAGES ───────────────────────────────────────────────────────────
+function SupportMessages() {
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await adminApi.get("/support");
+      setMessages(data);
+    } catch {
+      setErr("Xabarlar yuklanmadi");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function deleteMessage(id) {
+    if (!confirm("Xabarni o'chirish?")) return;
+    try {
+      await adminApi.delete(`/support/${id}`);
+      load();
+    } catch {
+      alert("O'chirishda xatolik");
+    }
+  }
+
+  async function markAsRead(id) {
+    try {
+      await adminApi.patch(`/support/${id}`, { read: true });
+      load();
+    } catch {}
+  }
+
+  async function markAsResolved(id) {
+    try {
+      await adminApi.patch(`/support/${id}`, { status: "resolved" });
+      load();
+    } catch {}
+  }
+
+  if (loading) return <div className={s.loading}>Yuklanmoqda...</div>;
+  if (err) return <div className={s.errMsg}>{err}</div>;
+
+  return (
+    <div className={s.section}>
+      <h2 className={s.sTitle}>📧 Foydalanuvchi xablari</h2>
+      {messages.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "2rem", color: "#888" }}>
+          Hozircha xabarlar yo'q
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {messages.map((msg) => (
+            <div
+              key={msg._id}
+              style={{
+                background: "#fff",
+                borderRadius: 12,
+                padding: "1.25rem",
+                boxShadow: "0 1px 4px rgba(0,0,0,.06)",
+                border: msg.read ? "1px solid #e2e8f0" : "2px solid #c9a84c",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.75rem" }}>
+                <div>
+                  <strong style={{ fontSize: 15 }}>{msg.name}</strong>
+                  <span style={{ color: "#64748b", fontSize: 13, marginLeft: "0.5rem" }}>{msg.email}</span>
+                </div>
+                <div style={{ fontSize: 12, color: "#888" }}>
+                  {fmtDate(msg.createdAt)}
+                </div>
+              </div>
+              <p style={{ margin: "0 0 1rem", color: "#334155", lineHeight: 1.5 }}>{msg.message}</p>
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                <span
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: 20,
+                    fontSize: 12,
+                    background: msg.status === "resolved" ? "#dcfce7" : "#fef3c7",
+                    color: msg.status === "resolved" ? "#15803d" : "#b45309",
+                  }}
+                >
+                  {msg.status === "resolved" ? "✅ Hal qilindi" : "⏳ Kutilmoqda"}
+                </span>
+                {!msg.read && (
+                  <button
+                    onClick={() => markAsRead(msg._id)}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 6,
+                      border: "1px solid #e2e8f0",
+                      background: "#fff",
+                      cursor: "pointer",
+                      fontSize: 12,
+                    }}
+                  >
+                    O'qildi deb belgilash
+                  </button>
+                )}
+                {msg.status !== "resolved" && (
+                  <button
+                    onClick={() => markAsResolved(msg._id)}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 6,
+                      border: "1px solid #22c55e",
+                      background: "#fff",
+                      cursor: "pointer",
+                      fontSize: 12,
+                      color: "#22c55e",
+                    }}
+                  >
+                    Hal qilindi deb belgilash
+                  </button>
+                )}
+                <button
+                  onClick={() => deleteMessage(msg._id)}
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    border: "1px solid #ef4444",
+                    background: "#fff",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    color: "#ef4444",
+                  }}
+                >
+                  O'chirish
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── SETTINGS ──────────────────────────────────────────────────────────────────
 function Settings() {
   const [cur,  setCur]  = useState("");
@@ -411,6 +554,7 @@ export default function AdminPanel() {
     { to: "/admin",        label: "📊 Dashboard" },
     { to: "/admin/chats",  label: "💬 Suhbatlar" },
     { to: "/admin/users",    label: "👥 Foydalanuvchilar" },
+    { to: "/admin/support", label: "📧 Xabarlar" },
     { to: "/admin/settings", label: "⚙️ Sozlamalar" },
   ];
 
@@ -439,6 +583,7 @@ export default function AdminPanel() {
             <Route index        element={<Overview />} />
             <Route path="chats" element={<ChatsList />} />
             <Route path="users"    element={<UsersList />} />
+            <Route path="support" element={<SupportMessages />} />
             <Route path="settings" element={<Settings />} />
           </Routes>
         </div>

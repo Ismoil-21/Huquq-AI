@@ -359,6 +359,12 @@ export function Login() {
 /* ───────── Telegram Bot ulanish ekrani ───────── */
 function TelegramConnect({ botUrl, onSkip }) {
   const { t } = useLang();
+
+  useEffect(() => {
+    // Avtomatik ravishda Telegram botni ochish
+    window.open(botUrl, "_blank");
+  }, [botUrl]);
+
   return (
     <div className={s.page}>
       <div className={s.card} style={{ textAlign: "center" }}>
