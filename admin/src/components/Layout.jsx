@@ -31,7 +31,12 @@ export default function Layout() {
   const [collapsed, setCollapsed] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
 
-  const api = axios.create({ baseURL: "/api" });
+  const api = axios.create({ 
+    baseURL: import.meta.env.VITE_API_URL
+      ? import.meta.env.VITE_API_URL + "/api"
+      : "/api",
+    timeout: 20000,
+  });
   api.interceptors.request.use((cfg) => {
     const token = localStorage.getItem("adminToken");
     if (token) cfg.headers.Authorization = `Bearer ${token}`;
