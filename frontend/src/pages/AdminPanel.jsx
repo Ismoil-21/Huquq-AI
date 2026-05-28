@@ -5,7 +5,12 @@ import axios from "axios";
 import s from "./AdminPanel.module.css";
 
 // Separate axios instance for admin (uses adminToken)
-const adminApi = axios.create({ baseURL: "/api", timeout: 20000 });
+const adminApi = axios.create({ 
+  baseURL: import.meta.env.VITE_API_URL
+    ? import.meta.env.VITE_API_URL + "/api"
+    : "/api",
+  timeout: 20000,
+ });
 adminApi.interceptors.request.use((cfg) => {
   const t = localStorage.getItem("adminToken");
   if (t) cfg.headers.Authorization = `Bearer ${t}`;
