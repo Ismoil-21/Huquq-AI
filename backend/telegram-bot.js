@@ -32,7 +32,7 @@ const LANG_INSTRUCTION = {
 const tg = {
   uz: {
     welcome: `🏛️ Mening Huquqim botiga xush kelibsiz!\n\nMen O'zbekiston qonunchiligi bo'yicha AI maslahatchi botman.\n\nHuquqiy muammongizni yozing — javob beraman! ✅`,
-    not_registered: `🏛️ <b>Mening Huquqim</b> — AI Huquqiy Maslahat\n\n🔓 <b>Bepul foydalanish uchun ro'yxatdan o'ting!</b>\n\n✅ Kuniga ${20} ta bepul savol\n✅ O'zbek, Rus, Ingliz tillarida\n✅ 24/7 ishlaydi\n\n👇 Quyidagi tugmani bosib ro'yxatdan o'ting:`,
+    not_registered: `🏛️ <b>Mening Huquqim</b> — AI Huquqiy Maslahat\n\n🔓 <b>Bepul foydalanish uchun ro'yxatdan o'ting!</b>\n\n✅ Kuniga ${20} ta bepul savol\n✅ O'zbek, Rus, Ingliz tillarida\n✅ 24/7 ishlaydi\n\n📄 Yo'riqnoma:\n1: 🌐 Saytdan ro'yxatdan o'tasiz,\n2: 👤 profilga kirasiz,\n3: "✈️ Telegram" tugmasini bosasiz va telegram username kiritasiz\n4: Telegramga qaytib kirib botdan foydalanasiz\n\n👇 Quyidagi tugmani bosib ro'yxatdan o'ting:`,
     new_ready: "✅ Yangi savol uchun tayyor!",
     new_prompt: "✅ Yangi savol! Muammongizni yozing.",
     about: `🏛️ Mening Huquqim\n\nO'zbekiston qonunchiligi bo'yicha AI maslahatchi.\n\n🌐 Sayt: ${SITE_URL}\n⚠️ Muhim ishlarda advokat bilan maslahatlashing.`,
@@ -56,7 +56,7 @@ const tg = {
   },
   ru: {
     welcome: `🏛️ Добро пожаловать в бот Мои Права!\n\nЯ AI советник по законодательству Узбекистана.\n\nОпишите вашу юридическую проблему — отвечу! ✅`,
-    not_registered: `🏛️ <b>Мои Права</b> — AI Юридическая Консультация\n\n🔓 <b>Зарегистрируйтесь для бесплатного доступа!</b>\n\n✅ ${20} бесплатных вопросов в день\n✅ История сохраняется\n✅ На узбекском, русском, английском\n✅ Работает 24/7\n\n👇 Нажмите кнопку ниже для регистрации:`,
+    not_registered: `🏛️ <b>Мои Права</b> — AI Юридическая Консультация\n\n🔓 <b>Зарегистрируйтесь для бесплатного доступа!</b>\n\n✅ ${20} бесплатных вопросов в день\n✅ История сохраняется\n✅ На узбекском, русском, английском\n✅ Работает 24/7\n\n📄 Инструкция:\n1: 🌐 Зарегистрируйтесь на сайте,\n2: 👤 Войдите в профиль,\n3: ✈️ Нажмите кнопку "Telegram" и введите свой Telegram username,\n4: 🤖 Вернитесь в Telegram и пользуйтесь ботом.\n\n👇 Нажмите кнопку ниже для регистрации:`,
     new_ready: "✅ Готов к новому вопросу!",
     new_prompt: "✅ Новый вопрос! Опишите вашу проблему.",
     about: `🏛️ Мои Права\n\nAI советник по законодательству Узбекистана.\n\n🌐 Сайт: ${SITE_URL}\n⚠️ По сложным делам консультируйтесь с адвокатом.`,
@@ -79,7 +79,7 @@ const tg = {
   },
   en: {
     welcome: `🏛️ Welcome to My Rights bot!\n\nI am an AI advisor on Uzbekistan legislation.\n\nDescribe your legal issue — I'll answer! ✅`,
-    not_registered: `🏛️ <b>My Rights</b> — AI Legal Consultation\n\n🔓 <b>Register for free access!</b>\n\n✅ ${20} free questions per day\n✅ All chats saved\n✅ Uzbek, Russian, English\n✅ Available 24/7\n\n👇 Press the button below to register:`,
+    not_registered: `🏛️ <b>My Rights</b> — AI Legal Consultation\n\n🔓 <b>Register for free access!</b>\n\n✅ ${20} free questions per day\n✅ All chats saved\n✅ Uzbek, Russian, English\n✅ Available 24/7\n\n📄 Instructions:\n1: 🌐 Register on the website,\n2: 👤 Go to your profile,\n3: ✈️ Click the "Telegram" button and enter your Telegram username,\n4: 🤖 Return to Telegram and use the bot.\n\n👇 Press the button below to register:`,
     new_ready: "✅ Ready for a new question!",
     new_prompt: "✅ New question! Describe your problem.",
     about: `🏛️ My Rights\n\nAI advisor on Uzbekistan legislation.\n\n🌐 Website: ${SITE_URL}\n⚠️ Consult a lawyer for complex cases.`,
