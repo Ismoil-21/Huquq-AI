@@ -352,8 +352,8 @@ async function callGroq(messages) {
   const resp = await groqClient.chat.completions.create({
     model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
     messages,
-    temperature: 0.15,
-    max_tokens: 1500,
+    temperature: 0.1,
+    max_tokens: 2000,
   });
   return resp.choices?.[0]?.message?.content?.trim() || "";
 }
@@ -368,60 +368,53 @@ async function callGemini(
 ) {
   if (!geminiClient) throw new Error("GEMINI_API_KEY sozlanmagan");
 
-  const historyText = cleanHistory(history)
-    .map(
-      (m) => `${m.role === "user" ? "Foydalanuvchi" : "Advokat"}: ${m.content}`,
-    )
-    .join("\n");
-
-  const textPrompt = historyText
-    ? `${systemPrompt}\n\n═══ OLDINGI SUHBAT ═══\n${historyText}\n\n═══ YANGI SAVOL ═══\n${userMessage}`
-    : `${systemPrompt}\n\n${userMessage}`;
-
   const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 
-  let contents;
+  // Suhbat tarixini Gemini multi-turn formatiga o'tkazish
+  const historyMsgs = cleanHistory(history).map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: String(m.content).slice(0, 800) }],
+  }));
+
+  // Joriy user xabari — rasm bor bo'lsa parts ga qo'shamiz
+  const currentParts = [];
+
   if (imageBase64) {
-    // BUG FIX: @google/genai v2.x da to'g'ri multimodal format
-    contents = [
-      {
-        role: "user",
-        parts: [
-          { text: textPrompt },
-          {
-            inlineData: {
-              mimeType: imageMimeType,
-              data: imageBase64,
-            },
-          },
-        ],
+    // Rasm tahlili uchun kuchli ko'rsatma
+    currentParts.push({
+      text: `${userMessage}\n\nILTIMOS RASMDAGI MA'LUMOTLARNI BATAFSIL TAHLIL QILING:\n- Hujjatdagi barcha matnni o'qing\n- Sanalar, miqdorlar, shartlarni aniqlang\n- Huquqiy jihatdan baholang\n- Amaliy maslahat bering`,
+    });
+    currentParts.push({
+      inlineData: {
+        mimeType: imageMimeType,
+        data: imageBase64,
       },
-    ];
+    });
   } else {
-    contents = [
-      {
-        role: "user",
-        parts: [{ text: textPrompt }],
-      },
-    ];
+    currentParts.push({ text: userMessage });
   }
 
-  // BUG FIX: @google/genai v2.x da to'g'ri API chaqiruvi
+  const contents = [...historyMsgs, { role: "user", parts: currentParts }];
+
   const resp = await geminiClient.models.generateContent({
     model,
     contents,
-    generationConfig: {
-      temperature: 0.15,
-      maxOutputTokens: 1500,
+    config: {
+      systemInstruction: systemPrompt,
+      temperature: 0.1,
+      maxOutputTokens: imageBase64 ? 3000 : 2000,
     },
   });
 
-  // BUG FIX: response.text() method yoki candidates orqali olish
-  if (resp.text) return resp.text.trim();
+  // Gemini v2 — resp.text() function yoki candidates fallback
+  try {
+    if (typeof resp.text === "function") return resp.text().trim();
+    if (typeof resp.text === "string") return resp.text.trim();
+  } catch {}
 
-  // fallback: candidates array dan olish
   const candidate = resp.candidates?.[0];
-  const text = candidate?.content?.parts?.[0]?.text || "";
+  const text =
+    candidate?.content?.parts?.map((p) => p.text || "").join("") || "";
   return text.trim();
 }
 
@@ -433,7 +426,7 @@ async function generateAnswer(
   imageMimeType = "image/jpeg",
 ) {
   if (imageBase64) {
-    // Rasm bor — avval Gemini, keyin Groq (Groq rasm ko'rmaydi)
+    // Rasm bor — Gemini vision modeli ishlatiladi
     try {
       const result = await callGemini(
         systemPrompt,
@@ -442,12 +435,25 @@ async function generateAnswer(
         imageBase64,
         imageMimeType,
       );
-      if (result) return result;
-      throw new Error("Gemini bo'sh javob qaytardi");
+      if (result && result.length > 20) return result;
+      throw new Error("Gemini bo'sh yoki qisqa javob qaytardi");
     } catch (err) {
       console.error("Gemini vision error:", err.message);
+      // Fallback: Groq ga rasmni tasvirlab yuborish
+      try {
+        const fallbackMsg = `Foydalanuvchi rasm yubordi va quyidagi savol berdi: "${userMessage}". Rasm tahlilini ko'rsating va huquqiy maslahat bering.`;
+        const msgs = [
+          { role: "system", content: systemPrompt },
+          ...cleanHistory(history),
+          { role: "user", content: fallbackMsg },
+        ];
+        const groqResult = await callGroq(msgs);
+        if (groqResult) return groqResult;
+      } catch (groqFallbackErr) {
+        console.error("Groq fallback error:", groqFallbackErr.message);
+      }
       throw new Error(
-        "Rasmni tahlil qilishda xatolik yuz berdi. Gemini API kalitini tekshiring.",
+        "Rasmni tahlil qilishda xatolik. Gemini API kalitini tekshiring.",
       );
     }
   }
@@ -499,9 +505,13 @@ async function getLegalAdvice(
   const webContext = formatSearchContext(filteredResults);
   const systemPrompt = buildSystemPrompt(category, lawData, webContext, lang);
 
+  const imageInstructions = {
+    uz: "\n\nRASM TAHLILI KO'RSATMASI:\nFoydalanuvchi rasm yubordi. Quyidagilarni bajar:\n1. Rasmdagi BARCHA matnni diqqat bilan o'qi\n2. Hujjat turini aniql (shartnoma, qaror, jarima, ijara, ish buyrug'i va h.k.)\n3. Asosiy shartlar, sanalar, miqdorlar, tomonlarni aniql\n4. Huquqiy jihatdan baholash — foydalanuvchi uchun xavfli yoki muhim nuqtalar\n5. Aniq amaliy maslahat ber",
+    ru: "\n\nИНСТРУКЦИЯ ПО АНАЛИЗУ ИЗОБРАЖЕНИЯ:\nПользователь отправил изображение. Выполни следующее:\n1. Внимательно прочитай ВЕСЬ текст на изображении\n2. Определи тип документа (договор, решение, штраф, аренда, приказ и т.д.)\n3. Выдели ключевые условия, даты, суммы, стороны\n4. Юридическая оценка — опасные или важные моменты для пользователя\n5. Дай конкретный практический совет",
+    en: "\n\nIMAGE ANALYSIS INSTRUCTION:\nUser sent an image. Do the following:\n1. Carefully read ALL text in the image\n2. Identify document type (contract, decision, fine, lease, order, etc.)\n3. Extract key terms, dates, amounts, parties\n4. Legal assessment — risky or important points for the user\n5. Give specific practical advice",
+  };
   const finalPrompt = imageBase64
-    ? systemPrompt +
-      "\n\n10. Foydalanuvchi RASM yubordi — rasmni diqqat bilan tahlil qilib, unda ko'rinadigan hujjat, shartnoma, qaror yoki boshqa huquqiy ma'lumotga asosan maslahat bering."
+    ? systemPrompt + (imageInstructions[lang] || imageInstructions.uz)
     : systemPrompt;
 
   try {
