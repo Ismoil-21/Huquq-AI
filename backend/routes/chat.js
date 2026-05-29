@@ -63,19 +63,16 @@ router.post("/", userGuard, webLimitGuard, upload.single("image"), async (req, r
     const userId  = toObjectId(req.authUser.id);
     const trimmed = message.trim().slice(0, 2000);
 
-    let sessionId = existingId || genSessionId("web", req.authUser.id);
+    // Frontend yuborgan sessionId ni DOIM ishlatamiz (yangi yoki mavjud)
+    // Eski bug: topilmasa yangi ID generatsiya qilinar edi → 2 ta chat paydo bo'lardi
+    const sessionId = existingId || genSessionId("web", req.authUser.id);
 
-    let chat = null;
-    if (existingId) {
-      chat = await Chat.findOne({ sessionId: existingId, userId });
-      if (!chat) sessionId = genSessionId("web", req.authUser.id);
-    }
-
+    let chat = await Chat.findOne({ sessionId, userId });
     if (!chat) {
       chat = new Chat({ sessionId, userId, source: "web", messages: [] });
     }
 
-    const { answer, category } = await getLegalAdvice(withLang(trimmed, lang), chat.messages, imageBase64, imageMimeType);
+    const { answer, category } = await getLegalAdvice(trimmed, chat.messages, imageBase64, imageMimeType, lang);
 
     const userContent = req.file ? `[Rasm] ${trimmed}` : trimmed;
     const userMsg = { role: "user", content: userContent };
@@ -128,7 +125,7 @@ router.post("/send", optionalUserGuard, mobileLimitGuard, async (req, res) => {
       chat = new Chat({ sessionId, userId: userId || undefined, source: "mobile", messages: [] });
     }
 
-    const { answer, category } = await getLegalAdvice(withLang(trimmed, lang), chat.messages, null, null);
+    const { answer, category } = await getLegalAdvice(trimmed, chat.messages, null, null, lang);
 
     chat.messages.push({ role: "user", content: trimmed });
     chat.messages.push({ role: "assistant", content: answer });
