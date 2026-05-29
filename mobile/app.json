@@ -11,14 +11,18 @@
       "resizeMode": "contain",
       "backgroundColor": "#0A0F1E"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "uz.huquq.app",
       "buildNumber": "1",
       "infoPlist": {
         "NSUserNotificationUsageDescription": "Huquqiy maslahat yangiliklari va limit haqida xabar olish uchun",
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -53,10 +57,11 @@
       ]
     ],
     "extra": {
-      "apiUrl": "https://huquq.uz/api",
+      "apiUrl": "https://huquq-ai-fpa2.onrender.com/api",
       "eas": {
-        "projectId": "uz.huquq.app"
+        "projectId": "b5591f21-74c6-46f4-87d5-ec1879cf2942"
       }
-    }
+    },
+    "owner": "ismoiltohirov"
   }
 }

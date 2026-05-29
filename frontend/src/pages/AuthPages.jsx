@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLang } from "../context/LangContext";
 import LangSwitcher from "../components/LangSwitcher";
-import api from "../utils/api";
+import axios from "axios";
 import s from "./Auth.module.css";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
@@ -97,6 +97,7 @@ function OTPVerify({ email, onSuccess, onBack }) {
   const [busy, setBusy] = useState(false);
   const [resent, setResent] = useState(false);
   const [timer, setTimer] = useState(60);
+  const [botUrl, setBotUrl] = useState(null);
   const { verifyOtp, resendOtp } = useAuth();
   const { t } = useLang();
 
@@ -112,8 +113,13 @@ function OTPVerify({ email, onSuccess, onBack }) {
     setErr("");
     setBusy(true);
     try {
-      await verifyOtp(email, otp);
-      onSuccess?.();
+      const result = await verifyOtp(email, otp);
+      // BUG FIX: botUrl bo'lsa TelegramConnect ko'rsatamiz
+      if (result?.botUrl) {
+        setBotUrl(result.botUrl);
+      } else {
+        onSuccess?.();
+      }
     } catch (ex) {
       setErr(ex.response?.data?.error || t.otp_error);
     } finally {
@@ -133,6 +139,11 @@ function OTPVerify({ email, onSuccess, onBack }) {
     } finally {
       setBusy(false);
     }
+  }
+
+  // BUG FIX: OTP tasdiqlangan, Telegram ulanish ekrani
+  if (botUrl) {
+    return <TelegramConnect botUrl={botUrl} onSkip={() => onSuccess?.()} />;
   }
 
   return (
@@ -198,16 +209,10 @@ function SupportModal({ onClose }) {
     setErr("");
     setBusy(true);
     try {
-      await api.post("/support", form);
+      await axios.post("/api/support", form);
       setSuccess(true);
       setTimeout(() => onClose(), 2000);
     } catch (ex) {
-      // 204 No Content ham success deb hisoblaymiz
-      if (ex.response?.status === 204) {
-        setSuccess(true);
-        setTimeout(() => onClose(), 2000);
-        return;
-      }
       const errorMsg = ex.response?.data?.error;
       if (errorMsg?.includes("email") || errorMsg?.includes("Email") ||
           errorMsg?.includes("пользователь") || errorMsg?.includes("user")) {
@@ -365,12 +370,6 @@ export function Login() {
 /* ───────── Telegram Bot ulanish ekrani ───────── */
 function TelegramConnect({ botUrl, onSkip }) {
   const { t } = useLang();
-
-  useEffect(() => {
-    // Avtomatik ravishda Telegram botni ochish
-    window.open(botUrl, "_blank");
-  }, [botUrl]);
-
   return (
     <div className={s.page}>
       <div className={s.card} style={{ textAlign: "center" }}>

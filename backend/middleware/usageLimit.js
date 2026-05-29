@@ -76,6 +76,31 @@ async function checkAndIncrement(userId) {
   const user = await User.findById(userId).select("dailyLimit").lean();
   const limit = user?.dailyLimit ?? 20;
 
+  // BUG FIX: avval joriy countni tekshiramiz, keyin increment qilamiz
+  // Bu race condition ni oldini oladi: limit oshib ketmasligi uchun
+  const existing = await UsageLog.findOne({ userId, date }).lean();
+  if (existing && existing.count >= limit) {
+    const unblockAt = getUnblockTime();
+    const msLeft = msUntilUnblock(unblockAt);
+    return {
+      limitExceeded: true,
+      used: limit,
+      limit,
+      unblockAt,
+      msLeft,
+      timeLeft: {
+        uz: formatTimeLeft(msLeft, "uz"),
+        ru: formatTimeLeft(msLeft, "ru"),
+        en: formatTimeLeft(msLeft, "en"),
+      },
+      unblockAtStr: {
+        uz: formatUnblockAt(unblockAt, "uz"),
+        ru: formatUnblockAt(unblockAt, "ru"),
+        en: formatUnblockAt(unblockAt, "en"),
+      },
+    };
+  }
+
   const log = await UsageLog.findOneAndUpdate(
     { userId, date },
     { $inc: { count: 1 } },

@@ -7,18 +7,21 @@
       "developmentClient": true,
       "distribution": "internal"
     },
+
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
       }
     },
+
     "production": {
       "android": {
-        "buildType": "aab"
+        "buildType": "app-bundle"
       }
     }
   },
+
   "submit": {
     "production": {}
   }

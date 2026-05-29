@@ -10,23 +10,28 @@ const TelegramBot = require("node-telegram-bot-api");
 const { getLegalAdvice } = require("./services/legalAI");
 const { Chat, User } = require("./models");
 const { recordStat } = require("./services/stats");
-
 const { checkAndIncrement } = require("./middleware/usageLimit");
+
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
 
-const sessions  = new Map();
-const userLang  = new Map();
-
-// telegramUserId -> { userId, username }
-const verifiedUsers = new Map();
+const sessions      = new Map(); // tgUserId -> { messages, sessionId }
+const userLang      = new Map(); // tgUserId -> "uz"|"ru"|"en"
+const verifiedUsers = new Map(); // tgUserId -> user._id
 
 const SITE_URL = process.env.SITE_URL || "https://huquq-ai-rose.vercel.app/";
 
-const LANG_INSTRUCTION = {
-  uz: "Javobni faqat o'zbek tilida yozing.",
-  ru: "Отвечайте только на русском языке.",
-  en: "Respond only in English.",
-};
+// ─────────────────────────────────────────────────────────────
+// TIL VA ALIFBO ANIQLASH — bot xabarini tahlil qiladi
+// ─────────────────────────────────────────────────────────────
+function detectScript(text = "") {
+  const cyrillic = (text.match(/[\u0400-\u04FF]/g) || []).length;
+  const latin    = (text.match(/[a-zA-Z']/g) || []).length;
+  return cyrillic > latin ? "cyrillic" : "latin";
+}
+
+// Telegram da til tanlangan bo'lsa, lekin xabar alifbosi farq qilsa —
+// getLegalAdvice ga to'g'ri lang va userText berib yuboramiz.
+// buildLangRule legalAI.js da userText orqali alifboni aniqlaydigan qilib yozilgan.
 
 // ── TRANSLATIONS ─────────────────────────────────────────────
 const tg = {
@@ -51,8 +56,9 @@ const tg = {
     },
     btn_new: "🔄 Yangi savol",
     btn_about: "ℹ️ Bot haqida",
-    register_btn: `🌐 Ro'yxatdan o'tish → ${SITE_URL}/register`,
+    register_btn: `✅ Bepul ro'yxatdan o'tish →`,
     linked: "✅ Hisobingiz muvaffaqiyatli bog'landi! Endi AI maslahatdan foydalanishingiz mumkin.\n\nSavolingizni yozing!",
+    already_linked: "✅ Hisobingiz allaqachon bog'langan. Savolingizni yozing!",
   },
   ru: {
     welcome: `🏛️ Добро пожаловать в бот Мои Права!\n\nЯ AI советник по законодательству Узбекистана.\n\nОпишите вашу юридическую проблему — отвечу! ✅`,
@@ -75,7 +81,9 @@ const tg = {
     },
     btn_new: "🔄 Новый вопрос",
     btn_about: "ℹ️ О боте",
+    register_btn: `✅ Зарегистрироваться бесплатно →`,
     linked: "✅ Аккаунт успешно привязан! Теперь вы можете использовать AI консультант.\n\nЗадайте вопрос!",
+    already_linked: "✅ Аккаунт уже привязан. Задайте вопрос!",
   },
   en: {
     welcome: `🏛️ Welcome to My Rights bot!\n\nI am an AI advisor on Uzbekistan legislation.\n\nDescribe your legal issue — I'll answer! ✅`,
@@ -98,7 +106,9 @@ const tg = {
     },
     btn_new: "🔄 New question",
     btn_about: "ℹ️ About bot",
+    register_btn: `✅ Register for free →`,
     linked: "✅ Account successfully linked! You can now use the AI advisor.\n\nAsk a question!",
+    already_linked: "✅ Account already linked. Ask a question!",
   },
 };
 
@@ -109,75 +119,62 @@ function tr(userId) {
   return tg[getLang(userId)] || tg.uz;
 }
 
-// ── CHECK IF USER IS REGISTERED ON WEBSITE ──────────────────
-// Yangi logika: telegramId bo'yicha YOKI saytda ro'yxatdan o'tgan
-// bo'lsa, Telegram ID ni avtomatik bog'laydi
+// ─────────────────────────────────────────────────────────────
+// USER TOPISH / BOG'LASH
+// ─────────────────────────────────────────────────────────────
 async function findOrLinkUser(telegramUserId, telegramUsername) {
   const tgId = String(telegramUserId);
 
   // 1. In-memory cache
   if (verifiedUsers.has(tgId)) return verifiedUsers.get(tgId);
 
-  // 2. DB da telegramId bilan bog'langan user bormi?
+  // 2. DB dan telegramId bilan qidirish
   try {
-    let user = await User.findOne({ telegramId: tgId, emailVerified: true });
+    const user = await User.findOne({ telegramId: tgId });
     if (user) {
       verifiedUsers.set(tgId, user._id);
+      if (telegramUsername && user.telegramUsername !== telegramUsername) {
+        User.findByIdAndUpdate(user._id, { telegramUsername }).catch(() => {});
+      }
       return user._id;
     }
   } catch (err) {
-    console.error("DB check error:", err.message);
+    console.error("DB findOrLinkUser error:", err.message);
   }
 
-  // 3. Telegram username bilan pendingTelegramUsername tekshirish
-  // Agar user pendingTelegramUsername kiritgan bo'lsa va bot username bilan mos kelsa,
-  // avtomatik bog'lash
+  // 3. pendingTelegramUsername bilan avtomatik bog'lash
   if (telegramUsername) {
     try {
-      const normalizedTgUsername = telegramUsername.toLowerCase().replace("@", "");
-      console.log(`🔍 Checking auto-link: Telegram username=${telegramUsername}, normalized=${normalizedTgUsername}`);
-      
+      const normalized = telegramUsername.toLowerCase().replace("@", "");
       const user = await User.findOne({
-        pendingTelegramUsername: normalizedTgUsername,
+        pendingTelegramUsername: normalized,
         emailVerified: true,
-        telegramVerified: { $ne: true }
+        telegramVerified: { $ne: true },
       });
-      
-      console.log(`🔍 Found user with pending username:`, user ? user.username : null);
-      
       if (user) {
-        // Ushbu Telegram ID boshqa hisobda ishlatilayaptimi?
-        const conflict = await User.findOne({
-          telegramId: tgId,
-          _id: { $ne: user._id },
-        });
-        if (conflict) {
-          console.log(`⚠️ Telegram ID ${tgId} already linked to another account`);
-          return null;
+        const conflict = await User.findOne({ telegramId: tgId, _id: { $ne: user._id } });
+        if (!conflict) {
+          user.telegramId       = tgId;
+          user.telegramUsername = telegramUsername;
+          user.telegramVerified = true;
+          user.pendingTelegramUsername = null;
+          await user.save();
+          verifiedUsers.set(tgId, user._id);
+          console.log(`✅ Auto-linked: ${user.username} via @${telegramUsername}`);
+          return user._id;
         }
-
-        // Avtomatik bog'lash
-        user.telegramId = tgId;
-        user.telegramUsername = telegramUsername;
-        user.telegramVerified = true;
-        user.pendingTelegramUsername = null;
-        await user.save();
-        
-        verifiedUsers.set(tgId, user._id);
-        console.log(`✅ Auto-linked user ${user.username} via Telegram username: ${telegramUsername}`);
-        return user._id;
       }
     } catch (err) {
-      console.error("Auto-link by username error:", err.message);
+      console.error("Auto-link error:", err.message);
     }
-  } else {
-    console.log(`⚠️ No telegram username provided for auto-link check`);
   }
 
   return null;
 }
 
-// ── KEYBOARDS ──────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// KEYBOARDS
+// ─────────────────────────────────────────────────────────────
 function mainMenu(userId) {
   const lang = getLang(userId);
   const labels = {
@@ -190,11 +187,7 @@ function mainMenu(userId) {
 
 function registerKeyboard(lang) {
   const url = `${SITE_URL}/register`;
-  const labels = {
-    uz: `✅ Bepul ro'yxatdan o'tish →`,
-    ru: `✅ Зарегистрироваться бесплатно →`,
-    en: `✅ Register for free →`,
-  };
+  const labels = { uz: `✅ Bepul ro'yxatdan o'tish →`, ru: `✅ Зарегистрироваться бесплатно →`, en: `✅ Register for free →` };
   return {
     reply_markup: {
       inline_keyboard: [
@@ -215,7 +208,9 @@ const langKeyboard = {
   },
 };
 
-// ── HELPERS ────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────
 function getSession(userId) {
   if (!sessions.has(userId)) {
     sessions.set(userId, { messages: [], sessionId: `tg_${userId}_${Date.now()}` });
@@ -227,10 +222,7 @@ async function safeSend(chatId, text, options = {}) {
   try {
     return await bot.sendMessage(chatId, text, { parse_mode: "HTML", ...options });
   } catch (err) {
-    if (err.response?.body?.error_code === 403) {
-      console.log(`🚫 User blocked bot: ${chatId}`);
-      return;
-    }
+    if (err.response?.body?.error_code === 403) { console.log(`🚫 User blocked bot: ${chatId}`); return; }
     try {
       return await bot.sendMessage(chatId, text.replace(/<[^>]*>/g, ""), options);
     } catch {
@@ -241,230 +233,42 @@ async function safeSend(chatId, text, options = {}) {
 
 async function sendNotRegistered(chatId, tgUserId) {
   const lang = getLang(tgUserId);
-  const T = tg[lang] || tg.uz;
-  await safeSend(chatId, T.not_registered, registerKeyboard(lang));
+  await safeSend(chatId, (tg[lang] || tg.uz).not_registered, registerKeyboard(lang));
 }
 
-// ── /start ─────────────────────────────────────────────────────
-bot.onText(/\/start/, async (msg) => {
-  const tgUserId  = msg.from.id;
-  const chatId    = msg.chat.id;
-  const tgUsername = msg.from.username || null;
-  sessions.delete(tgUserId);
-
-  if (!userLang.has(tgUserId)) {
-    await safeSend(chatId, tg.uz.lang_choose, langKeyboard);
-    return;
-  }
-
-  const userId = await findOrLinkUser(tgUserId, tgUsername);
-  if (!userId) {
-    await sendNotRegistered(chatId, tgUserId);
-    return;
-  }
-
-  await safeSend(chatId, tr(tgUserId).welcome, mainMenu(tgUserId));
-});
-
-// ── /yangi ─────────────────────────────────────────────────────
-bot.onText(/\/yangi/, async (msg) => {
-  const tgUserId = msg.from.id;
-  const chatId   = msg.chat.id;
-
-  const userId = await findOrLinkUser(tgUserId, msg.from.username);
-  if (!userId) {
-    await sendNotRegistered(chatId, tgUserId);
-    return;
-  }
-
-  sessions.delete(tgUserId);
-  await safeSend(chatId, tr(tgUserId).new_ready, mainMenu(tgUserId));
-});
-
-bot.onText(/\/help/, async (msg) => {
-  await safeSend(msg.chat.id, tr(msg.from.id).help);
-});
-
-bot.onText(/\/lang/, async (msg) => {
-  await safeSend(msg.chat.id, tg.uz.lang_choose, langKeyboard);
-});
-
-// ── LANGUAGE CALLBACK ──────────────────────────────────────────
-bot.on("callback_query", async (query) => {
-  const tgUserId = query.from.id;
-  const data     = query.data;
-  const chatId   = query.message.chat.id;
-
-  const langMap = { lang_uz: "uz", lang_ru: "ru", lang_en: "en" };
-  if (langMap[data]) {
-    const lang = langMap[data];
-    userLang.set(tgUserId, lang);
-    await bot.answerCallbackQuery(query.id);
-    await safeSend(chatId, tg[lang].lang_set);
-
-    const userId = await findOrLinkUser(tgUserId, query.from.username);
-    if (!userId) return sendNotRegistered(chatId, tgUserId);
-    return safeSend(chatId, tg[lang].welcome, mainMenu(tgUserId));
-  }
-});
-
-// ── MESSAGES ───────────────────────────────────────────────────
-bot.on("message", async (msg) => {
-  if (!msg.text && !msg.photo && !msg.document) return;
-  if (msg.text?.startsWith("/")) return;
-
-  const chatId     = msg.chat.id;
-  const tgUserId   = msg.from.id;
-  const tgUsername = msg.from.username || null;
-  const text       = msg.text || msg.caption || "Ushbu rasmni tahlil qilib, huquqiy maslahat bering.";
-  const T          = tr(tgUserId);
-
-  // Navigation buttons
-  if (["🔄 Yangi savol","🔄 Новый вопрос","🔄 New question"].includes(text)) {
-    const userId = await findOrLinkUser(tgUserId, tgUsername);
-    if (!userId) return sendNotRegistered(chatId, tgUserId);
-    sessions.delete(tgUserId);
-    return safeSend(chatId, T.new_prompt, mainMenu(tgUserId));
-  }
-
-  if (["ℹ️ Bot haqida","ℹ️ О боте","ℹ️ About bot"].includes(text)) {
-    return safeSend(chatId, T.about, mainMenu(tgUserId));
-  }
-
-  // Category buttons
-  if (T.categories[text]) {
-    const userId = await findOrLinkUser(tgUserId, tgUsername);
-    if (!userId) return sendNotRegistered(chatId, tgUserId);
-    return safeSend(chatId, T.categories[text]);
-  }
-
-  // ── MAIN GUARD ──
-  const userId = await findOrLinkUser(tgUserId, tgUsername);
-  if (!userId) {
-    return sendNotRegistered(chatId, tgUserId);
-  }
-
-  // ── AI ANSWER ──
-  // Limit tekshiruvi
-  const limitResult = await checkAndIncrement(userId);
-  if (limitResult) {
-    const lang = getLang(tgUserId);
-    const timeLeft   = (limitResult.timeLeft?.[lang]   || limitResult.timeLeft?.uz   || "24 soat");
-    const unblockStr = (limitResult.unblockAtStr?.[lang] || limitResult.unblockAtStr?.uz || "");
-    const limitMsgs = {
-      uz: `⏳ <b>Kunlik limitingiz tugadi</b>\n\n📊 Bugun: <b>${limitResult.limit} ta</b> savol ishlatildi\n🔒 Ochilishi: <b>${unblockStr}</b> (${timeLeft} qoldi)\n\n🌐 <a href="${SITE_URL}">Ko'proq ma'lumot</a>`,
-      ru: `⏳ <b>Дневной лимит исчерпан</b>\n\n📊 Сегодня: <b>${limitResult.limit}</b> вопросов использовано\n🔒 Откроется: <b>${unblockStr}</b> (осталось ${timeLeft})\n\n🌐 <a href="${SITE_URL}">Подробнее</a>`,
-      en: `⏳ <b>Daily limit reached</b>\n\n📊 Today: <b>${limitResult.limit}</b> questions used\n🔒 Opens: <b>${unblockStr}</b> (${timeLeft} left)\n\n🌐 <a href="${SITE_URL}">More info</a>`,
-    };
-    return safeSend(chatId, limitMsgs[lang] || limitMsgs.uz, mainMenu(tgUserId));
-  }
-
-  const loader = await safeSend(chatId, T.analyzing);
-  const sess   = getSession(tgUserId);
-
-  // Rasm yuklash (agar yuborilgan bo'lsa)
-  let imageBase64 = null;
-  let imageMimeType = "image/jpeg";
-  try {
-    if (msg.photo && msg.photo.length > 0) {
-      // Eng katta o'lchamdagi rasmni olish
-      const photoId = msg.photo[msg.photo.length - 1].file_id;
-      const fileInfo = await bot.getFile(photoId);
-      const fileUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${fileInfo.file_path}`;
-      const https = require("https");
-      imageBase64 = await new Promise((resolve, reject) => {
-        https.get(fileUrl, (res) => {
-          const chunks = [];
-          res.on("data", (chunk) => chunks.push(chunk));
-          res.on("end", () => resolve(Buffer.concat(chunks).toString("base64")));
-          res.on("error", reject);
-        });
-      });
-      imageMimeType = "image/jpeg";
-    }
-  } catch (imgErr) {
-    console.error("Rasm yuklash xatosi:", imgErr.message);
-    // Rasm yuklanmasa ham davom etamiz
-  }
-
-  try {
-    const lang   = getLang(tgUserId);
-    const { answer, category } = await getLegalAdvice(text, sess.messages, imageBase64, imageMimeType, lang);
-
-    const userContent = imageBase64 ? `[📎 Rasm] ${text}` : text;
-    sess.messages.push({ role: "user",      content: userContent });
-    sess.messages.push({ role: "assistant", content: answer });
-    if (sess.messages.length > 20) sess.messages = sess.messages.slice(-20);
-
-    // MongoDB save — userId bilan bog'lash
-    try {
-      let chat = await Chat.findOne({ sessionId: sess.sessionId });
-      if (!chat) {
-        chat = new Chat({
-          sessionId:        sess.sessionId,
-          userId:           userId,
-          source:           "telegram",
-          telegramUserId:   String(tgUserId),
-          telegramUsername: tgUsername,
-          messages:         [],
-        });
-      }
-      const tgUserMsg = { role: "user", content: imageBase64 ? `[📎 Rasm] ${text}` : text };
-      if (imageBase64) {
-        tgUserMsg.imageData     = imageBase64;
-        tgUserMsg.imageMimeType = imageMimeType;
-      }
-      chat.messages.push(tgUserMsg);
-      chat.messages.push({ role: "assistant", content: answer });
-      chat.category = category;
-      await chat.save();
-    } catch (dbErr) {
-      console.error("Mongo save error:", dbErr.message);
-    }
-
-    recordStat("telegram", category).catch(() => {});
-
-    if (loader?.message_id) {
-      await bot.deleteMessage(chatId, loader.message_id).catch(() => {});
-    }
-
-    const chunks = answer.match(/[\s\S]{1,4000}/g) || [];
-    for (const chunk of chunks) {
-      await safeSend(chatId, chunk, mainMenu(tgUserId));
-    }
-  } catch (err) {
-    console.error("Telegram AI error:", err);
-    if (loader?.message_id) {
-      await bot.deleteMessage(chatId, loader.message_id).catch(() => {});
-    }
-    await safeSend(chatId, T.limit, mainMenu(tgUserId));
-  }
-});
-
-// ── DEEP LINK: /start link_<token> ─────────────────────────────
-// Saytdagi "Telegramni bog'lash" tugmasidan keladi.
-// User token bilan botga keladi — Telegram ID saqlanadi.
+// ─────────────────────────────────────────────────────────────
+// DEEP LINK: /start link_<token>  — AVVAL ro'yxatdan o'tish
+// ─────────────────────────────────────────────────────────────
 bot.onText(/\/start link_([a-f0-9]+)/, async (msg, match) => {
   const tgUserId   = msg.from.id;
   const tgUsername = msg.from.username || null;
   const chatId     = msg.chat.id;
   const token      = match[1];
 
+  if (!userLang.has(tgUserId)) userLang.set(tgUserId, "uz");
+
+  const lang = getLang(tgUserId);
+  const T    = tg[lang] || tg.uz;
+
   try {
+    // Allaqachon bog'langanmi?
+    const existing = await User.findOne({ telegramId: String(tgUserId) });
+    if (existing) {
+      verifiedUsers.set(String(tgUserId), existing._id);
+      sessions.delete(tgUserId);
+      return safeSend(chatId, T.already_linked, mainMenu(tgUserId));
+    }
+
     const user = await User.findOne({
       otpCode:    `tglink_${token}`,
       otpExpires: { $gt: new Date() },
     });
 
     if (!user) {
-      return safeSend(chatId, "❌ Token noto'g'ri yoki muddati tugagan.\n\nSaytdan qayta urinib ko'ring.");
+      return safeSend(chatId, `❌ Havola muddati tugagan yoki noto'g'ri.\n\nSaytga kirib qayta bog'lash havolasini oling: ${SITE_URL}/profile`);
     }
 
-    // Ushbu Telegram ID boshqa hisobda ishlatilayaptimi?
-    const conflict = await User.findOne({
-      telegramId: String(tgUserId),
-      _id: { $ne: user._id },
-    });
+    const conflict = await User.findOne({ telegramId: String(tgUserId), _id: { $ne: user._id } });
     if (conflict) {
       return safeSend(chatId, "⚠️ Bu Telegram hisob allaqachon boshqa akkountga bog'langan.");
     }
@@ -476,21 +280,184 @@ bot.onText(/\/start link_([a-f0-9]+)/, async (msg, match) => {
     user.otpExpires       = null;
     await user.save();
 
-    // Cache yangilash
     verifiedUsers.set(String(tgUserId), user._id);
+    sessions.delete(tgUserId);
 
-    const lang = getLang(tgUserId);
-    const T    = tg[lang] || tg.uz;
-    await safeSend(chatId, T.linked || tg.uz.linked, mainMenu(tgUserId));
+    await safeSend(chatId, T.linked, mainMenu(tgUserId));
   } catch (err) {
     console.error("Deep link error:", err.message);
     await safeSend(chatId, "❌ Xatolik yuz berdi. Qayta urinib ko'ring.");
   }
 });
 
-bot.on("polling_error", (err) => {
-  console.error("Telegram polling error:", err.message);
+// ─────────────────────────────────────────────────────────────
+// /start
+// ─────────────────────────────────────────────────────────────
+bot.onText(/^\/start$/, async (msg) => {
+  const tgUserId   = msg.from.id;
+  const chatId     = msg.chat.id;
+  const tgUsername = msg.from.username || null;
+  sessions.delete(tgUserId);
+
+  if (!userLang.has(tgUserId)) {
+    await safeSend(chatId, tg.uz.lang_choose, langKeyboard);
+    return;
+  }
+
+  const userId = await findOrLinkUser(tgUserId, tgUsername);
+  if (!userId) { await sendNotRegistered(chatId, tgUserId); return; }
+  await safeSend(chatId, tr(tgUserId).welcome, mainMenu(tgUserId));
 });
 
-// ── EXPORT ──
+// ─────────────────────────────────────────────────────────────
+// /yangi, /help, /lang
+// ─────────────────────────────────────────────────────────────
+bot.onText(/\/yangi/, async (msg) => {
+  const tgUserId = msg.from.id;
+  const chatId   = msg.chat.id;
+  const userId   = await findOrLinkUser(tgUserId, msg.from.username);
+  if (!userId) { await sendNotRegistered(chatId, tgUserId); return; }
+  sessions.delete(tgUserId);
+  await safeSend(chatId, tr(tgUserId).new_ready, mainMenu(tgUserId));
+});
+
+bot.onText(/\/help/, async (msg) => { await safeSend(msg.chat.id, tr(msg.from.id).help); });
+bot.onText(/\/lang/, async (msg)  => { await safeSend(msg.chat.id, tg.uz.lang_choose, langKeyboard); });
+
+// ─────────────────────────────────────────────────────────────
+// TIL CALLBACK
+// ─────────────────────────────────────────────────────────────
+bot.on("callback_query", async (query) => {
+  const tgUserId = query.from.id;
+  const data     = query.data;
+  const chatId   = query.message.chat.id;
+  const langMap  = { lang_uz: "uz", lang_ru: "ru", lang_en: "en" };
+  if (!langMap[data]) return;
+
+  const lang = langMap[data];
+  userLang.set(tgUserId, lang);
+  await bot.answerCallbackQuery(query.id);
+  await safeSend(chatId, tg[lang].lang_set);
+
+  const userId = await findOrLinkUser(tgUserId, query.from.username);
+  if (!userId) return sendNotRegistered(chatId, tgUserId);
+  return safeSend(chatId, tg[lang].welcome, mainMenu(tgUserId));
+});
+
+// ─────────────────────────────────────────────────────────────
+// MESSAGES — asosiy AI handler
+// ─────────────────────────────────────────────────────────────
+bot.on("message", async (msg) => {
+  if (!msg.text && !msg.photo && !msg.document) return;
+  if (msg.text?.startsWith("/")) return;
+
+  const chatId     = msg.chat.id;
+  const tgUserId   = msg.from.id;
+  const tgUsername = msg.from.username || null;
+  const text       = msg.text || msg.caption || "Ushbu rasmni tahlil qilib, huquqiy maslahat bering.";
+  const T          = tr(tgUserId);
+  const lang       = getLang(tgUserId);
+
+  // Navigation tugmalari
+  if (["🔄 Yangi savol","🔄 Новый вопрос","🔄 New question"].includes(text)) {
+    const userId = await findOrLinkUser(tgUserId, tgUsername);
+    if (!userId) return sendNotRegistered(chatId, tgUserId);
+    sessions.delete(tgUserId);
+    return safeSend(chatId, T.new_prompt, mainMenu(tgUserId));
+  }
+  if (["ℹ️ Bot haqida","ℹ️ О боте","ℹ️ About bot"].includes(text)) {
+    return safeSend(chatId, T.about, mainMenu(tgUserId));
+  }
+  if (T.categories[text]) {
+    const userId = await findOrLinkUser(tgUserId, tgUsername);
+    if (!userId) return sendNotRegistered(chatId, tgUserId);
+    return safeSend(chatId, T.categories[text]);
+  }
+
+  // Ro'yxatdan o'tganmi?
+  const userId = await findOrLinkUser(tgUserId, tgUsername);
+  if (!userId) return sendNotRegistered(chatId, tgUserId);
+
+  // Limit tekshiruvi
+  const limitResult = await checkAndIncrement(userId);
+  if (limitResult) {
+    const timeLeft   = limitResult.timeLeft?.[lang]   || limitResult.timeLeft?.uz   || "24 soat";
+    const unblockStr = limitResult.unblockAtStr?.[lang] || limitResult.unblockAtStr?.uz || "";
+    const limitMsgs = {
+      uz: `⏳ <b>Kunlik limitingiz tugadi</b>\n\n📊 Bugun: <b>${limitResult.limit} ta</b> savol ishlatildi\n🔒 Ochilishi: <b>${unblockStr}</b> (${timeLeft} qoldi)\n\n🌐 <a href="${SITE_URL}">Ko'proq ma'lumot</a>`,
+      ru: `⏳ <b>Дневной лимит исчерпан</b>\n\n📊 Сегодня: <b>${limitResult.limit}</b> вопросов использовано\n🔒 Откроется: <b>${unblockStr}</b> (осталось ${timeLeft})\n\n🌐 <a href="${SITE_URL}">Подробнее</a>`,
+      en: `⏳ <b>Daily limit reached</b>\n\n📊 Today: <b>${limitResult.limit}</b> questions used\n🔒 Opens: <b>${unblockStr}</b> (${timeLeft} left)\n\n🌐 <a href="${SITE_URL}">More info</a>`,
+    };
+    return safeSend(chatId, limitMsgs[lang] || limitMsgs.uz, mainMenu(tgUserId));
+  }
+
+  const loader = await safeSend(chatId, T.analyzing);
+  const sess   = getSession(tgUserId);
+
+  // Rasm yuklash
+  let imageBase64 = null;
+  let imageMimeType = "image/jpeg";
+  try {
+    if (msg.photo && msg.photo.length > 0) {
+      const photoId  = msg.photo[msg.photo.length - 1].file_id;
+      const fileInfo = await bot.getFile(photoId);
+      const fileUrl  = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${fileInfo.file_path}`;
+      const https    = require("https");
+      imageBase64 = await new Promise((resolve, reject) => {
+        https.get(fileUrl, (res) => {
+          const chunks = [];
+          res.on("data", (c) => chunks.push(c));
+          res.on("end",  () => resolve(Buffer.concat(chunks).toString("base64")));
+          res.on("error", reject);
+        });
+      });
+    }
+  } catch (imgErr) {
+    console.error("Rasm yuklash xatosi:", imgErr.message);
+  }
+
+  try {
+    // legalAI.js ga lang + userText beramiz — u alifboni avtomatik aniqlaydi
+    const { answer, category } = await getLegalAdvice(text, sess.messages, imageBase64, imageMimeType, lang);
+
+    const userContent = imageBase64 ? `[📎 Rasm] ${text}` : text;
+    sess.messages.push({ role: "user",      content: userContent });
+    sess.messages.push({ role: "assistant", content: answer });
+    if (sess.messages.length > 20) sess.messages = sess.messages.slice(-20);
+
+    // MongoDB
+    try {
+      let chat = await Chat.findOne({ sessionId: sess.sessionId });
+      if (!chat) {
+        chat = new Chat({
+          sessionId: sess.sessionId, userId, source: "telegram",
+          telegramUserId: String(tgUserId), telegramUsername: tgUsername, messages: [],
+        });
+      }
+      const tgMsg = { role: "user", content: userContent };
+      if (imageBase64) { tgMsg.imageData = imageBase64; tgMsg.imageMimeType = imageMimeType; }
+      chat.messages.push(tgMsg);
+      chat.messages.push({ role: "assistant", content: answer });
+      chat.category = category;
+      await chat.save();
+    } catch (dbErr) {
+      console.error("Mongo save error:", dbErr.message);
+    }
+
+    recordStat("telegram", category).catch(() => {});
+
+    if (loader?.message_id) await bot.deleteMessage(chatId, loader.message_id).catch(() => {});
+
+    const chunks = answer.match(/[\s\S]{1,4000}/g) || [];
+    for (const chunk of chunks) await safeSend(chatId, chunk, mainMenu(tgUserId));
+
+  } catch (err) {
+    console.error("Telegram AI error:", err);
+    if (loader?.message_id) await bot.deleteMessage(chatId, loader.message_id).catch(() => {});
+    await safeSend(chatId, T.limit, mainMenu(tgUserId));
+  }
+});
+
+bot.on("polling_error", (err) => { console.error("Telegram polling error:", err.message); });
+
 module.exports = { bot, verifiedUsers };

@@ -36,7 +36,7 @@ const LoginLogSchema = new mongoose.Schema(
     device:    { type: String, default: "" },
     os:        { type: String, default: "" },
     browser:   { type: String, default: "" },
-    source:    { type: String, enum: ["web","google","telegram"], default: "web" },
+    source:    { type: String, enum: ["web","google","telegram","mobile"], default: "web" },
   },
   { timestamps: true }
 );

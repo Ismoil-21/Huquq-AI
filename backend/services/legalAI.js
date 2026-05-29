@@ -12,7 +12,7 @@ const geminiClient = process.env.GEMINI_API_KEY
   : null;
 
 // ─────────────────────────────────────────────────────────────
-// QONUN BAZASI (kengaytirilgan)
+// QONUN BAZASI
 // ─────────────────────────────────────────────────────────────
 const LAW_DATABASE = {
   mehnat: {
@@ -128,7 +128,6 @@ const CATEGORY_MAP = [
       "mehnat",
       "bo'shatish",
       "ish beruvchi",
-      "xodim",
       "ishchi",
       "labor",
       "зарплата",
@@ -142,7 +141,6 @@ const CATEGORY_MAP = [
       "ajralish",
       "nikoh",
       "aliment",
-      "bola",
       "oila",
       "zags",
       "turmush",
@@ -203,7 +201,6 @@ const CATEGORY_MAP = [
       "firib",
       "politsiya",
       "pora",
-      "shikoyat",
       "o'ldi",
       "urdi",
       "kaltakladi",
@@ -236,7 +233,6 @@ const CATEGORY_MAP = [
     id: "uy_joy",
     kw: [
       "kvartira",
-      "uy",
       "ijara",
       "mulk",
       "ko'chmas",
@@ -276,17 +272,88 @@ function getLawsForCategory(cat) {
   return LAW_DATABASE[cat] || null;
 }
 
-function cleanHistory(history = []) {
-  return history.slice(-8).map((m) => ({
+function cleanHistory(history = [], currentMessage = "") {
+  const current = currentMessage.toLowerCase();
+  const commonWords = current.split(" ").filter((w) => w.length > 4);
+
+  const filtered =
+    commonWords.length > 0
+      ? history.filter((m) => {
+          const txt = String(m.content || "").toLowerCase();
+          return commonWords.some((w) => txt.includes(w));
+        })
+      : history;
+
+  return filtered.slice(-6).map((m) => ({
     role: m.role,
-    content: String(m.content || "").slice(0, 500),
+    content: String(m.content || "").slice(0, 700),
   }));
 }
 
 // ─────────────────────────────────────────────────────────────
-// PROFESSIONAL SYSTEM PROMPT
+// ANTI-REPEAT FILTER
 // ─────────────────────────────────────────────────────────────
-function buildSystemPrompt(category, lawData, webContext, lang = "uz") {
+function removeRepeated(text = "") {
+  const lines = text.split("\n");
+  const seen = new Set();
+  return lines
+    .filter((line) => {
+      const clean = line.trim();
+      if (!clean) return true; // bo'sh qatorlarni saqlash
+      if (seen.has(clean)) return false;
+      seen.add(clean);
+      return true;
+    })
+    .join("\n");
+}
+
+// ─────────────────────────────────────────────────────────────
+// TIL VA ALIFBO ANIQLASH
+// ─────────────────────────────────────────────────────────────
+function detectScript(text = "") {
+  const cyrillic = (text.match(/[\u0400-\u04FF]/g) || []).length;
+  const latin = (text.match(/[a-zA-Z']/g) || []).length;
+  return cyrillic > latin ? "cyrillic" : "latin";
+}
+
+function buildLangRule(lang, text) {
+  if (lang === "ru") {
+    return `ЯЗЫК ОТВЕТА — СТРОГОЕ ПРАВИЛО:
+Отвечай ТОЛЬКО на русском языке.
+НЕ переключайся на узбекский или другой язык.
+НЕ меняй язык ни при каких условиях.`;
+  }
+  if (lang === "en") {
+    return `LANGUAGE RULE — STRICT:
+Respond ONLY in English.
+Do NOT switch to Uzbek or any other language under any circumstances.`;
+  }
+  // O'zbek — lotin yoki kiril
+  const script = detectScript(text);
+  if (script === "cyrillic") {
+    return `ТИЛ ҚОИДАСИ — ҚАТЪИЙ:
+Жавобни фақат ЎЗБЕК тилида ва фақат КИРИЛ алифбосида ёз.
+Лотин ёзувига ЎТМА.
+Рус тилига ЎТМА.
+Ҳеч қандай шароитда бошқа алифбо ёки тилга ўтма.`;
+  }
+  return `TIL QOIDASI — QAT'IY:
+Javobni faqat O'ZBEK tilida va faqat LOTIN alifbosida yoz.
+Kirill yozuviga O'TMA.
+Rus tiliga O'TMA.
+Hech qanday sharoitda boshqa alifbo yoki tilga o'tma.`;
+}
+
+// ─────────────────────────────────────────────────────────────
+// SYSTEM PROMPT — HUQUQ AI MASTER PROMPT ga moslashtirilgan
+// ─────────────────────────────────────────────────────────────
+function buildSystemPrompt(
+  category,
+  lawData,
+  webContext,
+  lang = "uz",
+  userText = "",
+) {
   const lawSection = lawData
     ? `\n\nTEGISHLI QONUN BAZASI (${lawData.name}):\n${lawData.laws.map((l, i) => `${i + 1}. ${l}`).join("\n")}`
     : "";
@@ -295,70 +362,129 @@ function buildSystemPrompt(category, lawData, webContext, lang = "uz") {
     ? `\n\nQO'SHIMCHA MA'LUMOTLAR:\n${webContext}`
     : "";
 
-  const langRules = {
-    uz: "Javobni O'ZBEK TILIDA yoz. Oddiy, tushunarli so'zlar ishlat. Murakkab yuridik atamalarni oddiy tilda tushuntir.",
-    ru: "Отвечай ТОЛЬКО НА РУССКОМ ЯЗЫКЕ. Используй простые, понятные слова. Юридические термины объясняй простым языком.",
-    en: "Respond ONLY IN ENGLISH. Use simple, clear language. Explain legal terms in plain language.",
-  };
-  const langInstruction = langRules[lang] || langRules.uz;
+  const langRule = buildLangRule(lang, userText);
 
-  return `You are an advanced professional AI assistant specialized in legal consultation for Uzbekistan. You have deep reasoning, multilingual communication, and structured problem-solving abilities.
+  // Document mode aniqlash
+  const isDocument =
+    /ariza|shikoyat|da'vo|sudga|aliment|shartnoma|petitsiya/i.test(userText);
 
-PRIMARY GOAL: Provide accurate, intelligent, helpful, professional, and context-aware legal responses.
+  const documentMode = isDocument
+    ? `\n\nHUJJAT YARATISH REJIMI:\nTo'liq professional huquqiy hujjat tuzish talab etilmoqda.\nRealistik huquqiy formatlash, rasmiy til, aniq tuzilma ishlatilsin.`
+    : "";
 
-TIL QOIDASI (ENG MUHIM):
-${langInstruction}
+  return `Sen "Huquq AI" — O'zbekiston qonunchiligi bo'yicha ixtisoslashgan, yuqori darajali avtonom AI huquqiy yordamchisan.
 
-CORE BEHAVIOR:
-1. Deeply analyze the user's message before answering.
-2. Never repeat previous answers unless explicitly asked.
-3. Focus on solving the user's REAL legal problem.
-4. Think step-by-step before generating the final response.
-5. Avoid hallucinations and fake legal information.
-6. If uncertain — clearly say "yurist bilan maslahatlashish tavsiya etiladi".
-7. Every answer must be freshly generated for the current request.
+Sen quyidagi sohalar bo'yicha tajribali mutaxassis sifatida ishlaysan:
+- Advokat, huquqshunos, prokuror
+- Huquqiy tahlilchi va strategist
+- Huquqiy konsultant
 
-RESPONSE FORMAT:
-- Write in a clear, natural, human-like tone — not robotic.
-- Use simple numbered lists (1. 2. 3.) when explaining steps.
-- Use bullet points (- item) for short lists.
-- Use bold (**text**) only for important terms or section headers.
-- Keep responses concise and practical — no filler text.
-- End each response with a short 1-2 sentence SUMMARY/CONCLUSION.
-- Do NOT use special symbols like ═══ ▸ ◆ ━━━ in responses.
+═══ ${langRule} ═══
 
-LEGAL EXPERTISE:
-- Apply Uzbekistan law: Mehnat kodeksi, Oila kodeksi, Fuqarolik kodeksi, Yer kodeksi, Jinoyat kodeksi.
-- Always cite real law articles with exact numbers (e.g. "Mehnat kodeksi 108-modda").
-- NEVER invent or guess law article numbers — if unsure, recommend consulting a lawyer.
-- Do NOT mention or link lex.uz.
-- Cover: employment, family, inheritance, land, consumer rights, criminal, business, rental, fraud, IT law.
+ASOSIY VAZIFA:
+Foydalanuvchiga juda aniq, intelligent, professional, chuqur tahlil qilingan, amaliy va insoniy huquqiy yordam berish.
+Foydalanuvchi his etishi kerak: "Bu AI haqiqiy yuqori darajali huquq eksperti kabi ishlayapti."
 
-PROFESSIONAL MODE:
-Act like a senior legal consultant — confident, professional, calm, logical.
+HUQUQIY FIKRLASH ALGORITMI:
+Har bir savol uchun quyidagilarni aniqlash shart:
+1. Huquqiy kategoriya va foydalanuvchi niyati
+2. Huquqiy xatarlar va muhim faktlar
+3. Mumkin bo'lgan huquqiy oqibatlar
+4. Eng kuchli huquqiy yechimlar va strategik variantlar
+5. Foydalanuvchi huquqlari va amaliy keyingi qadamlar
 
-CRIMINAL CASES:
-If user mentions a serious crime:
-1. Check zaruriy mudofaa (JK 38) and lozim mudofaa (JK 39).
-2. Remind of jimlik huquqi (JPK 68) — say nothing until lawyer arrives.
-3. Advise immediately hiring a lawyer and contacting prokuratura.${lawSection}${webSection}`;
+JAVOB STRUKTURASI (kerak bo'lganda):
+📌 Vaziyat: (muammoni tushuntirish)
+⚖️ Huquqiy tahlil: (chuqur huquqiy tahlil)
+✅ Nima qilish kerak: (bosqichma-bosqich yo'riqnoma)
+📝 Tayyor hujjat: (kerak bo'lsa)
+🚨 Muhim jihatlar: (xatarlar / ogohlantirishlar)
+📍 Xulosa: (aniq yakuniy tavsiya)
+
+JAVOB USLUBI:
+- Tabiiy, insoniy, professional — robototik emas.
+- Qadamlarni 1. 2. 3. ko'rinishida raqamlash.
+- Qisqa ro'yxatlar uchun - (tire) ishlat.
+- Muhim atamalar uchun **qalin** ishlat.
+- Keraksiz so'zlardan qoching — qisqa va amaliy bo'l.
+- Har javob oxirida aniq XULOSA yoz.
+- Ishonchli, professional, mantiqiy, xotirjam ohangda yoz.
+- Foydalanuvchi hurmat qilingan, tushunilgan va professionallarcha yo'naltirilgan his etsin.
+
+HUQUQIY HUJJAT YARATISH:
+So'ralganda yuqori professional darajada tuzish:
+- Shikoyat, ariza, shartnoma, petitsiya, bildirishnoma
+- Sud bayonotlari, tushuntirishlar, rasmiy huquqiy so'rovlar
+Hujjatlar: realistic ko'rinishda, professional formatda, rasmiy ovozda, mantiqan tuzilgan bo'lsin.
+
+IXTISOSLIK SOHALARI:
+Jinoiy huquq, Fuqarolik huquqi, Mehnat huquqi, Oila huquqi, Ajralish, Aliment, Biznes huquqi, Shartnomalar, Bank huquqi, Qarz va kreditlar, Firibgarlik va kiberjinoyatlar, Soliq huquqi, Ko'chmas mulk huquqi, Iste'molchilarni himoya qilish, Ma'muriy huquq, IT huquqi, Ish nizolari, Sud jarayonlari, Politsiya va prokuror ishlari.
+
+BIRLAMCHI E'TIBOR: O'zbekiston huquqiy tizimi va qonunlari.
+
+HUQUQIY QOIDALAR:
+1. O'zbekiston qonunlarini qo'lla: Mehnat, Oila, Fuqarolik, Yer, Jinoyat kodekslari.
+2. Qonun moddalarini aniq raqam bilan keltir (masalan: "Mehnat kodeksi 108-modda").
+3. Noma'lum modda raqamlarini O'YLAB CHIQARMA — "yurist bilan maslahatlash" de.
+4. lex.uz ni HECH QACHON tilga olma, havola berma.
+5. Barcha sohalarda yordam ber: mehnat, oila, meros, yer, iste'molchi, jinoiy, biznes, ijara.
+
+JINOIY ISHLAR:
+Og'ir jinoyat (o'ldirish, zo'ravonlik) haqida yozilsa:
+1. Zaruriy mudofaa (JK 38) va lozim mudofaa (JK 39) ni tekshir.
+2. Jimlik huquqini (JPK 68) eslatib o't — advokat kelguncha hech narsa aytmaslik.
+3. Darhol advokat yollash va prokuraturaga murojaat qilishni ayt.
+
+SIFAT NAZORATI:
+Har javobdan oldin o'zing tekshir:
+- Javob foydalanuvchi muammosini to'g'ridan to'g'ri hal qiladimi?
+- Mantiqiy va aniqmi?
+- Amaliy qiymatga egami?
+- Keraksiz takrorlar yo'qmi?
+
+AI THINKING MODE:
+Javob berishdan oldin:
+- Chuqur tahlil qil.
+- Tanqidiy fikrla.
+- Bir nechta talqinlarni ko'rib chiq.
+- Eng huquqiy jihatdan aniq javobni tanlang.
+
+RASM TAHLILI (agar rasm yuborilsa):
+- Rasmdagi BARCHA matnni diqqat bilan o'qi.
+- Nomlar, sanalar, miqdorlar, imzolarni aniqla.
+- Hujjat turini aniqlang.
+- Huquqiy xatarlarni ko'rsating.
+- Amaliy maslahat bering.${documentMode}${lawSection}${webSection}`;
 }
 
 // ─────────────────────────────────────────────────────────────
 // AI CALL FUNCTIONS
 // ─────────────────────────────────────────────────────────────
-async function callGroq(messages) {
+async function callGroq(messages, userMessage = "") {
   if (!groqClient) throw new Error("GROQ_API_KEY sozlanmagan");
+
+  // Model routing: murakkab savollarda kuchli model ishlatiladi
+  const isComplex =
+    (userMessage && userMessage.length > 500) ||
+    /sud|jinoyat|o'ldirish|firib|qamoq|huquq|shartnoma|meros|aliment/i.test(
+      userMessage || "",
+    );
+
+  const model =
+    process.env.GROQ_MODEL ||
+    (isComplex ? "llama-3.3-70b-versatile" : "llama-3.1-8b-instant");
+
   const resp = await groqClient.chat.completions.create({
-    model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+    model,
     messages,
-    temperature: 0.1,
+    temperature: 0.3,
+    top_p: 0.9,
     max_tokens: 2000,
   });
-  return resp.choices?.[0]?.message?.content?.trim() || "";
+  const raw = resp.choices?.[0]?.message?.content?.trim() || "";
+  return removeRepeated(raw);
 }
 
-// BUG FIX #1: Gemini @google/genai v2.x API to'g'ri sintaksis
 async function callGemini(
   systemPrompt,
   userMessage,
@@ -370,25 +496,18 @@ async function callGemini(
 
   const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 
-  // Suhbat tarixini Gemini multi-turn formatiga o'tkazish
   const historyMsgs = cleanHistory(history).map((m) => ({
     role: m.role === "assistant" ? "model" : "user",
     parts: [{ text: String(m.content).slice(0, 800) }],
   }));
 
-  // Joriy user xabari — rasm bor bo'lsa parts ga qo'shamiz
   const currentParts = [];
-
   if (imageBase64) {
-    // Rasm tahlili uchun kuchli ko'rsatma
     currentParts.push({
-      text: `${userMessage}\n\nILTIMOS RASMDAGI MA'LUMOTLARNI BATAFSIL TAHLIL QILING:\n- Hujjatdagi barcha matnni o'qing\n- Sanalar, miqdorlar, shartlarni aniqlang\n- Huquqiy jihatdan baholang\n- Amaliy maslahat bering`,
+      text: `${userMessage}\n\nRASMDAGI MA'LUMOTLARNI BATAFSIL TAHLIL QILING:\n- Barcha matnni o'qing\n- Hujjat turini aniqlang\n- Sanalar, miqdorlar, shartlarni ko'rsating\n- Huquqiy baholang\n- Amaliy maslahat bering`,
     });
     currentParts.push({
-      inlineData: {
-        mimeType: imageMimeType,
-        data: imageBase64,
-      },
+      inlineData: { mimeType: imageMimeType, data: imageBase64 },
     });
   } else {
     currentParts.push({ text: userMessage });
@@ -401,20 +520,20 @@ async function callGemini(
     contents,
     config: {
       systemInstruction: systemPrompt,
-      temperature: 0.1,
+      temperature: 0.3,
+      topP: 0.9,
       maxOutputTokens: imageBase64 ? 3000 : 2000,
     },
   });
 
-  // Gemini v2 — resp.text() function yoki candidates fallback
   try {
     if (typeof resp.text === "function") return resp.text().trim();
     if (typeof resp.text === "string") return resp.text.trim();
   } catch {}
 
-  const candidate = resp.candidates?.[0];
   const text =
-    candidate?.content?.parts?.map((p) => p.text || "").join("") || "";
+    resp.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") ||
+    "";
   return text.trim();
 }
 
@@ -426,7 +545,6 @@ async function generateAnswer(
   imageMimeType = "image/jpeg",
 ) {
   if (imageBase64) {
-    // Rasm bor — Gemini vision modeli ishlatiladi
     try {
       const result = await callGemini(
         systemPrompt,
@@ -436,21 +554,20 @@ async function generateAnswer(
         imageMimeType,
       );
       if (result && result.length > 20) return result;
-      throw new Error("Gemini bo'sh yoki qisqa javob qaytardi");
+      throw new Error("Gemini bo'sh javob qaytardi");
     } catch (err) {
       console.error("Gemini vision error:", err.message);
-      // Fallback: Groq ga rasmni tasvirlab yuborish
       try {
-        const fallbackMsg = `Foydalanuvchi rasm yubordi va quyidagi savol berdi: "${userMessage}". Rasm tahlilini ko'rsating va huquqiy maslahat bering.`;
+        const fallbackMsg = `Foydalanuvchi rasm yubordi va quyidagi savol berdi: "${userMessage}". Huquqiy maslahat bering.`;
         const msgs = [
           { role: "system", content: systemPrompt },
-          ...cleanHistory(history),
+          ...cleanHistory(history, userMessage),
           { role: "user", content: fallbackMsg },
         ];
         const groqResult = await callGroq(msgs);
         if (groqResult) return groqResult;
-      } catch (groqFallbackErr) {
-        console.error("Groq fallback error:", groqFallbackErr.message);
+      } catch (e) {
+        console.error("Groq fallback error:", e.message);
       }
       throw new Error(
         "Rasmni tahlil qilishda xatolik. Gemini API kalitini tekshiring.",
@@ -460,12 +577,12 @@ async function generateAnswer(
 
   const messages = [
     { role: "system", content: systemPrompt },
-    ...cleanHistory(history),
+    ...cleanHistory(history, userMessage),
     { role: "user", content: String(userMessage).slice(0, 2000) },
   ];
 
   try {
-    return await callGroq(messages);
+    return await callGroq(messages, userMessage);
   } catch (groqErr) {
     console.error("Groq error:", groqErr.message);
     try {
@@ -478,6 +595,9 @@ async function generateAnswer(
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+// MAIN EXPORT
+// ─────────────────────────────────────────────────────────────
 async function getLegalAdvice(
   userMessage,
   history = [],
@@ -495,7 +615,7 @@ async function getLegalAdvice(
     console.warn("Web search skipped:", err.message);
   }
 
-  // BUG FIX #4: webContext dan lex.uz ma'lumotlarini olib tashlash
+  // lex.uz filterlaymiz
   const filteredResults = webResults.filter((r) => {
     const src = (r.source || "").toLowerCase();
     const url = (r.url || "").toLowerCase();
@@ -503,15 +623,29 @@ async function getLegalAdvice(
   });
 
   const webContext = formatSearchContext(filteredResults);
-  const systemPrompt = buildSystemPrompt(category, lawData, webContext, lang);
+  const systemPrompt = buildSystemPrompt(
+    category,
+    lawData,
+    webContext,
+    lang,
+    userMessage,
+  );
 
+  // Rasm tahlili uchun til bo'yicha ko'rsatma
   const imageInstructions = {
-    uz: "\n\nRASM TAHLILI KO'RSATMASI:\nFoydalanuvchi rasm yubordi. Quyidagilarni bajar:\n1. Rasmdagi BARCHA matnni diqqat bilan o'qi\n2. Hujjat turini aniql (shartnoma, qaror, jarima, ijara, ish buyrug'i va h.k.)\n3. Asosiy shartlar, sanalar, miqdorlar, tomonlarni aniql\n4. Huquqiy jihatdan baholash — foydalanuvchi uchun xavfli yoki muhim nuqtalar\n5. Aniq amaliy maslahat ber",
-    ru: "\n\nИНСТРУКЦИЯ ПО АНАЛИЗУ ИЗОБРАЖЕНИЯ:\nПользователь отправил изображение. Выполни следующее:\n1. Внимательно прочитай ВЕСЬ текст на изображении\n2. Определи тип документа (договор, решение, штраф, аренда, приказ и т.д.)\n3. Выдели ключевые условия, даты, суммы, стороны\n4. Юридическая оценка — опасные или важные моменты для пользователя\n5. Дай конкретный практический совет",
-    en: "\n\nIMAGE ANALYSIS INSTRUCTION:\nUser sent an image. Do the following:\n1. Carefully read ALL text in the image\n2. Identify document type (contract, decision, fine, lease, order, etc.)\n3. Extract key terms, dates, amounts, parties\n4. Legal assessment — risky or important points for the user\n5. Give specific practical advice",
+    uz: "\n\nRASM TAHLILI:\nRasmdagi barcha matnni o'qi, hujjat turini aniqla, huquqiy baho ber, amaliy maslahat ber.",
+    "uz-cyrillic":
+      "\n\nРАСМ ТАҲЛИЛИ:\nРасмдаги барча матнни ўқи, ҳужжат турини аниқла, ҳуқуқий баҳо бер, амалий маслаҳат бер.",
+    ru: "\n\nАНАЛИЗ ИЗОБРАЖЕНИЯ:\nПрочитай весь текст, определи тип документа, дай правовую оценку, предложи конкретный совет.",
+    en: "\n\nIMAGE ANALYSIS:\nRead all text, identify document type, give legal assessment, provide practical advice.",
   };
+
+  let imgKey = lang;
+  if (lang === "uz" && detectScript(userMessage) === "cyrillic")
+    imgKey = "uz-cyrillic";
+
   const finalPrompt = imageBase64
-    ? systemPrompt + (imageInstructions[lang] || imageInstructions.uz)
+    ? systemPrompt + (imageInstructions[imgKey] || imageInstructions.uz)
     : systemPrompt;
 
   try {
@@ -531,7 +665,13 @@ async function getLegalAdvice(
       };
     }
 
-    return { answer, category };
+    // Professional output cleaner — markdown formatini tozalash
+    const cleanedAnswer = answer
+      .replace(/\*\*/g, "")
+      .replace(/#{1,6} /g, "")
+      .trim();
+
+    return { answer: cleanedAnswer, category };
   } catch (err) {
     console.error("AI error:", err.message);
 
@@ -542,7 +682,6 @@ async function getLegalAdvice(
         category: "system",
       };
     }
-
     if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) {
       return {
         answer:
@@ -550,7 +689,6 @@ async function getLegalAdvice(
         category: "system",
       };
     }
-
     return {
       answer:
         "AI vaqtincha ishlamayapti. Keyinroq qayta urinib ko'ring yoki Telegram botga murojaat qiling.",

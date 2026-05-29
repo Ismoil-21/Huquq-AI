@@ -39,10 +39,7 @@ export function AuthProvider({ children }) {
         const { data } = await api.get("/auth/me");
         if (data?.user) {
           setUser((prev) => ({ ...prev, ...data.user }));
-          localStorage.setItem(
-            "user",
-            JSON.stringify({ ...user, ...data.user }),
-          );
+          localStorage.setItem("user", JSON.stringify({ ...JSON.parse(localStorage.getItem("user") || "{}"), ...data.user }));
         }
       } catch (err) {
         if (err.response?.status === 401) {
@@ -87,7 +84,8 @@ export function AuthProvider({ children }) {
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
     setUser(data.user);
-    return data.user;
+    // BUG FIX: botUrl qaytaramiz — Telegram ulanish ekrani ko'rinishi uchun
+    return { ...data.user, botUrl: data.botUrl || null };
   }, []);
 
   const resendOtp = useCallback(async (email) => {
