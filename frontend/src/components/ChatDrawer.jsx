@@ -54,6 +54,7 @@ function UsageBadge({ usage }) {
 /* ─── Login kerak ekrani ─── */
 function LoginRequired({ onClose }) {
   const navigate = useNavigate();
+  const { t } = useLang();
   function goLogin()    { onClose(); navigate("/login");    }
   function goRegister() { onClose(); navigate("/register"); }
 
@@ -64,22 +65,19 @@ function LoginRequired({ onClose }) {
     }}>
       <div style={{ fontSize: "3rem" }}>🔒</div>
       <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700, color: "var(--text-primary,#1a1a1a)" }}>
-        AI maslahatdan foydalanish uchun kirish kerak
+        {t.login_required_title}
       </h3>
-      <p style={{ margin: 0, fontSize: "0.9rem", color: "var(--text-secondary,#666)", lineHeight: 1.5 }}>
-        Ro'yxatdan o'ting yoki tizimga kiring — <strong>bepul</strong> va bir daqiqa vaqt oladi.
-      </p>
+      <p style={{ margin: 0, fontSize: "0.9rem", color: "var(--text-secondary,#666)", lineHeight: 1.5 }}
+        dangerouslySetInnerHTML={{ __html: t.login_required_desc }}
+      />
       <div style={{
         background: "var(--bg-soft,#f9f6f0)", borderRadius: 12,
         padding: "1rem 1.5rem", width: "100%", maxWidth: 280,
         border: "1px solid var(--border,#e8e3dc)",
       }}>
-        <div style={{ fontSize: "0.82rem", color: "var(--text-secondary,#666)", lineHeight: 1.8 }}>
-          ✅ Kuniga <strong>20 ta</strong> bepul savol<br/>
-          ✅ Barcha suhbatlar saqlanadi<br/>
-          ✅ O'zbek, Rus, Ingliz tillarida<br/>
-          ✅ 24/7 ishlaydi
-        </div>
+        <div style={{ fontSize: "0.82rem", color: "var(--text-secondary,#666)", lineHeight: 1.8 }}
+          dangerouslySetInnerHTML={{ __html: t.login_required_features }}
+        />
       </div>
       <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem", flexWrap: "wrap", justifyContent: "center" }}>
         <button onClick={goRegister} style={{
@@ -87,19 +85,19 @@ function LoginRequired({ onClose }) {
           color: "#fff", border: "none", borderRadius: 8, fontSize: "0.9rem",
           fontWeight: 700, cursor: "pointer",
         }}>
-          Ro'yxatdan o'tish →
+          {t.nav_register} →
         </button>
         <button onClick={goLogin} style={{
           padding: "0.65rem 1.4rem", background: "transparent",
           color: "var(--accent,#8b6914)", border: "2px solid var(--accent,#8b6914)",
           borderRadius: 8, fontSize: "0.9rem", fontWeight: 600, cursor: "pointer",
         }}>
-          Kirish
+          {t.nav_login}
         </button>
       </div>
       <a href={TELEGRAM_URL} target="_blank" rel="noreferrer"
         style={{ fontSize: "0.82rem", color: "var(--text-secondary,#888)", marginTop: "0.25rem" }}>
-        ✈ Telegram bot orqali ham foydalanishingiz mumkin
+        ✈ {t.login_required_telegram}
       </a>
     </div>
   );
@@ -323,7 +321,7 @@ export default function ChatDrawer() {
         const file = item.getAsFile();
         if (!file) continue;
         if (file.size > 5 * 1024 * 1024) {
-          alert("Rasm hajmi 5MB dan oshmasligi kerak");
+          alert(t.chat_image_size_error || "Rasm hajmi 5MB dan oshmasligi kerak");
           return;
         }
         e.preventDefault();
@@ -452,7 +450,7 @@ export default function ChatDrawer() {
                 borderTop: "1px solid #fecaca", textAlign: "center",
                 fontSize: "0.82rem", color: "#dc2626",
               }}>
-                ⚠️ Kunlik limit tugadi ({usage.limit} ta savol). Ertaga qayta foydalanishingiz mumkin.
+                ⚠️ {t.drawer_limit_reached?.replace("{n}", usage?.limit) || `Kunlik limit tugadi (${usage?.limit} ta savol). Ertaga qayta foydalanishingiz mumkin.`}
               </div>
             )}
 
@@ -486,7 +484,7 @@ export default function ChatDrawer() {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={onKey}
                   onPaste={onPaste}
-                  placeholder={limitReached ? "Kunlik limit tugadi..." : t.chat_placeholder}
+                  placeholder={limitReached ? (t.drawer_limit_placeholder || "Kunlik limit tugadi...") : t.chat_placeholder}
                 />
                 {/* Rasm yuklash tugmasi */}
                 {!limitReached && (
@@ -498,7 +496,7 @@ export default function ChatDrawer() {
                         const file = e.target.files?.[0];
                         if (!file) return;
                         if (file.size > 5 * 1024 * 1024) {
-                          alert("Rasm hajmi 5MB dan oshmasligi kerak");
+                          alert(t.chat_image_size_error || "Rasm hajmi 5MB dan oshmasligi kerak");
                           return;
                         }
                         setImageFile(file);
@@ -510,7 +508,7 @@ export default function ChatDrawer() {
                     <button type="button"
                       onClick={() => document.getElementById("chat-image-input")?.click()}
                       disabled={loading}
-                      title="Rasm yuklash"
+                      title={t.chat_upload_image || "Rasm yuklash"}
                       style={{
                         background: "none", border: "none", cursor: "pointer",
                         fontSize: 18, padding: "0 4px", opacity: loading ? 0.4 : 0.7,
