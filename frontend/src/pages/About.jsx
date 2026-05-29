@@ -31,15 +31,16 @@ export default function About() {
     fetchSiteContent();
   }, []);
 
-  // Use backend content if available, otherwise fallback to translations
-  const aboutTitle = siteContent?.about?.title || t.about_title;
-  const aboutLead = siteContent?.about?.lead || t.about_lead;
-  const aboutText = siteContent?.about?.text || t.about_text;
-  
+  // Matnlar har doim t.* dan (til bilan o'zgaradi)
+  const aboutTitle = t.about_title;
+  const aboutLead  = t.about_lead;
+  const aboutText  = t.about_text;
+
+  // Stats: raqamlar backend'dan, labellar t.* dan
   const stats = siteContent?.stats ? [
-    { icon: <Calendar size={24} />, value: siteContent.stats.experience, label: siteContent.stats.experienceLabel },
-    { icon: <Check size={24} />, value: siteContent.stats.cases, label: siteContent.stats.casesLabel },
-    { icon: <Smile size={24} />, value: siteContent.stats.clients, label: siteContent.stats.clientsLabel },
+    { icon: <Calendar size={24} />, value: siteContent.stats.experience, label: t.stats[0]?.label },
+    { icon: <Check size={24} />,    value: siteContent.stats.cases,      label: t.stats[1]?.label },
+    { icon: <Smile size={24} />,    value: siteContent.stats.clients,    label: t.stats[2]?.label },
   ] : t.stats;
 
   return (

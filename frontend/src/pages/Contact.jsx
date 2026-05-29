@@ -26,13 +26,15 @@ export default function Contact() {
     fetchSiteContent();
   }, []);
 
-  // Use backend content if available, otherwise fallback to translations
-  const address = siteContent?.contact?.address || t.contact_address;
-  const phone = siteContent?.contact?.phone || t.contact_phone;
-  const email = siteContent?.contact?.email || t.contact_email;
-  const hoursWeek = siteContent?.contact?.hoursWeek || t.contact_hours_week;
-  const hoursSat = siteContent?.contact?.hoursSat || t.contact_hours_sat;
-  const telegramLink = siteContent?.social?.telegram || "https://t.me/MeningHuquqimBot";
+  // Til-mustaqil (links, phone, email, address) backend'dan
+  // Vaqt matnlari (hours) t.* dan - til bilan o'zgaradi
+  const address      = siteContent?.contact?.address || t.contact_address;
+  const phone        = siteContent?.contact?.phone   || t.contact_phone;
+  const email        = siteContent?.contact?.email   || t.contact_email;
+  const telegramLink = siteContent?.social?.telegram  || "https://t.me/MeningHuquqimBot";
+  // Ish vaqti har doim t.* dan (tarjima bo'lishi kerak)
+  const hoursWeek = t.contact_hours_week;
+  const hoursSat  = t.contact_hours_sat;
 
   return (
     <>

@@ -86,16 +86,19 @@ export default function Home() {
     openChat();
   }
 
-  // Use backend content if available, otherwise fallback to translations
-  const heroTitle = siteContent?.hero?.title || t.hero_title;
-  const heroSubtitle = siteContent?.hero?.subtitle || t.hero_subtitle;
-  const heroCta = siteContent?.hero?.cta || t.hero_cta;
+  // Til-mustaqil ma'lumotlar (faqat links) backend'dan olinadi
+  // Barcha MATNLAR har doim t.* (active lang) dan olinadi - backend override qilmaydi
   const telegramLink = siteContent?.social?.telegram || "https://t.me/mening_huquqlarim_bot";
 
+  const heroTitle    = t.hero_title;
+  const heroSubtitle = t.hero_subtitle;
+  const heroCta      = t.hero_cta;
+
+  // Stats: qiymatlar (raqamlar) backend'dan, labellar t.* dan
   const stats = siteContent?.stats ? [
-    { icon: <Calendar size={24} />, value: siteContent.stats.experience, label: siteContent.stats.experienceLabel },
-    { icon: <Check size={24} />, value: siteContent.stats.cases, label: siteContent.stats.casesLabel },
-    { icon: <Smile size={24} />, value: siteContent.stats.clients, label: siteContent.stats.clientsLabel },
+    { icon: <Calendar size={24} />, value: siteContent.stats.experience, label: t.stats[0]?.label },
+    { icon: <Check size={24} />,    value: siteContent.stats.cases,      label: t.stats[1]?.label },
+    { icon: <Smile size={24} />,    value: siteContent.stats.clients,    label: t.stats[2]?.label },
   ] : t.stats;
 
   return (

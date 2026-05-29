@@ -454,31 +454,35 @@ export default function ChatDrawer() {
               </div>
             )}
 
+            {/* Rasm preview - inputdan TEPADA ko'rinadi */}
+            {imagePreview && (
+              <div style={{
+                padding: "8px 12px 4px",
+                borderTop: "1px solid var(--border,#e8e3dc)",
+                background: "var(--bg-soft,#f9f6f0)",
+              }}>
+                <div style={{ position: "relative", display: "inline-block" }}>
+                  <img src={imagePreview} alt="preview" style={{
+                    width: 64, height: 64, objectFit: "cover",
+                    borderRadius: 10, border: "2px solid var(--accent,#8b6914)",
+                    display: "block",
+                  }} />
+                  <button type="button" onClick={() => { setImageFile(null); setImagePreview(null); }}
+                    style={{
+                      position: "absolute", top: -7, right: -7,
+                      background: "#dc2626", color: "#fff", border: "none",
+                      borderRadius: "50%", width: 20, height: 20,
+                      fontSize: 12, cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      padding: 0, boxShadow: "0 1px 4px rgba(0,0,0,.25)",
+                    }}><X size={12} /></button>
+                </div>
+              </div>
+            )}
+
             <footer className={s.inputBar}>
               <button type="button" className={s.newChatBtn} onClick={startNew} title={t.drawer_new_chat}><RefreshCw size={18} /></button>
               <div className={s.inputWrap}>
-                {/* Rasm preview */}
-                {imagePreview && (
-                  <div style={{
-                    position: "relative", display: "inline-block",
-                    margin: "4px 8px 4px 0", flexShrink: 0,
-                  }}>
-                    <img src={imagePreview} alt="preview" style={{
-                      width: 48, height: 48, objectFit: "cover",
-                      borderRadius: 8, border: "2px solid var(--accent,#8b6914)",
-                      display: "block",
-                    }} />
-                    <button type="button" onClick={() => { setImageFile(null); setImagePreview(null); }}
-                      style={{
-                        position: "absolute", top: -6, right: -6,
-                        background: "#dc2626", color: "#fff", border: "none",
-                        borderRadius: "50%", width: 18, height: 18,
-                        fontSize: 11, cursor: "pointer", lineHeight: "18px",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        padding: 0,
-                      }}><X size={12} /></button>
-                  </div>
-                )}
                 <textarea ref={textaRef} className={s.ta} rows={1}
                   value={input} disabled={loading || limitReached}
                   onChange={(e) => setInput(e.target.value)}
