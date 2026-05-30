@@ -1,8 +1,8 @@
 "use strict";
 /**
- * AI-powered Intent Detector
- * Kategoriyani LLM orqali aniqlaydigan classifier.
- * Keyword-based detectCategory() ni to'liq almashtiradi.
+ * Intent Detector — AI + keyword fallback
+ * Muhim: HECH QACHON o'z-o'zicha bola, voyaga yetmagan
+ * yoki boshqa tomonlarni xabardan tashqari xulosa qilmaydi.
  */
 
 const Groq = require("groq-sdk");
@@ -12,18 +12,9 @@ const groqClient = process.env.GROQ_API_KEY
   : null;
 
 const CATEGORIES = [
-  "criminal",
-  "civil",
-  "labor",
-  "family",
-  "inheritance",
-  "real_estate",
-  "consumer",
-  "administrative",
-  "tax",
-  "business",
-  "immigration",
-  "unknown",
+  "criminal", "civil", "labor", "family",
+  "inheritance", "real_estate", "consumer",
+  "administrative", "tax", "business", "immigration", "unknown",
 ];
 
 const CATEGORY_UZ_MAP = {
@@ -41,49 +32,88 @@ const CATEGORY_UZ_MAP = {
   unknown:        "boshqa",
 };
 
-// Fallback: keyword-based (LLM ishlamasa)
+// Keyword fallback — aniq iboralar
 const KEYWORD_FALLBACK = [
-  { id: "labor",          kw: ["ish ", "maosh","ishdan","ta'til","xodim","ish haqi","mehnat","bo'shatish","labor","зарплата","работа","уволить"] },
-  { id: "family",         kw: ["ajralish","nikoh","aliment","oila","zags","turmush","divorce","marriage","развод","алименты","семья"] },
-  { id: "inheritance",    kw: ["meros","vasiyat","notarius","vafot","merosxo'r","inheritance","наследство","завещание"] },
-  { id: "real_estate",    kw: ["yer","kadastr","hovli","uchastka","kvartira","ijara","mulk","land","земля","участок","квартира","аренда"] },
-  { id: "consumer",       kw: ["tovar","qaytarish","sotuvchi","kafolat","sifatsiz","do'kon","xaridor","товар","возврат"] },
-  { id: "criminal",       kw: ["jinoyat","o'g'irlik","firib","politsiya","pora","o'ldi","urdi","zo'rlash","tahdid","crime","murder","преступление","убийство","арест"] },
-  { id: "business",       kw: ["biznes","tadbirkor","kompaniya","soliq","ooo","ip","business","налог","компания"] },
-  { id: "administrative", kw: ["hokimiyat","davlat","korrupsiya","mansabdor","shikoyat","government","чиновник"] },
-  { id: "tax",            kw: ["soliq","nds","daromad solig'i","tax","налог","ндс"] },
+  {
+    id: "criminal",
+    kw: [
+      "urib","urdi","urishdi","kaltakladi","zo'rladi","tahdid",
+      "o'g'irlik","o'g'irladi","firib","aldadi","aldab",
+      "qotillik","o'ldirdi","jinoyat","politsiya","prokuratura",
+      "hibsga","qamoq","pora","shantaj","shikoyat",
+      "преступление","убийство","арест","мошенничество",
+      "crime","assault","theft","fraud","police",
+    ],
+  },
+  {
+    id: "labor",
+    kw: [
+      "ish haqi","maosh","mehnat","ishdan bo'shatish","haydadi",
+      "quvib chiqardi","ta'til","xodim","ish shartnomasi",
+      "зарплата","работа","уволить","трудовой",
+    ],
+  },
+  {
+    id: "family",
+    kw: [
+      "ajralish","nikoh","aliment","turmush","zags",
+      "ajrashmoqchi","развод","алименты","семья",
+    ],
+  },
+  {
+    id: "inheritance",
+    kw: ["meros","vasiyat","notarius","vafot","merosxo'r","наследство","завещание"],
+  },
+  {
+    id: "real_estate",
+    kw: [
+      "yer","kadastr","hovli","uchastka","kvartira","ijara",
+      "mulk","uy sotish","uy sotib","земля","участок","квартира","аренда",
+    ],
+  },
+  {
+    id: "consumer",
+    kw: ["tovar","qaytarish","sotuvchi","kafolat","sifatsiz","do'kon","товар","возврат"],
+  },
+  {
+    id: "business",
+    kw: ["biznes","tadbirkor","mchj","ooo","ip tadbirkor","kompaniya","компания","ООО"],
+  },
+  {
+    id: "administrative",
+    kw: ["hokimiyat","davlat organi","mansabdor","korrupsiya","чиновник"],
+  },
+  {
+    id: "tax",
+    kw: ["soliq","nds","daromad solig'i","налог","ндс"],
+  },
 ];
 
+// ── AI classifier ─────────────────────────────────────────────
 async function detectIntentAI(userMessage) {
   if (!groqClient) return detectIntentKeyword(userMessage);
 
   try {
     const resp = await groqClient.chat.completions.create({
-      model: "llama-3.1-8b-instant",
+      model:       "llama-3.1-8b-instant",
       temperature: 0,
-      max_tokens: 20,
+      max_tokens:  15,
       messages: [
         {
           role: "system",
-          content: `You are a legal category classifier for Uzbekistan law.
-Classify the user message into exactly ONE category.
-Output ONLY the category ID, nothing else.
+          content: `You are a legal intent classifier for Uzbekistan law.
+Classify into ONE category. Output ONLY the category word.
 
-Categories:
-- criminal (jinoyat, crime, murder, theft, fraud, arrest)
-- civil (fuqarolik, contract disputes, property, damages)
-- labor (mehnat, employment, salary, dismissal, workplace)
-- family (oila, divorce, alimony, marriage, child custody)
-- inheritance (meros, will, estate, heirs)
-- real_estate (yer, land, apartment, rent, property)
-- consumer (istemolchi, product return, warranty, consumer rights)
-- administrative (hokimiyat, government, official complaints)
-- tax (soliq, tax, VAT, income tax)
-- business (tadbirkorlik, company, LLC, entrepreneurship)
-- immigration (migration, citizenship, visa, residence permit)
-- unknown (cannot classify)`,
+IMPORTANT RULES:
+- "ustidan yozmoqchiman" = report_to_authorities = criminal
+- "urib ketishdi" = assault = criminal
+- "pul bermayapti" = could be labor OR civil — check context
+- Do NOT infer children, minors unless explicitly mentioned
+- "u bolani" = "that person/guy" in colloquial Uzbek, NOT a child
+
+Categories: criminal civil labor family inheritance real_estate consumer administrative tax business immigration unknown`,
         },
-        { role: "user", content: userMessage.slice(0, 500) },
+        { role: "user", content: userMessage.slice(0, 400) },
       ],
     });
 
@@ -103,8 +133,8 @@ function detectIntentKeyword(text = "") {
   return "unknown";
 }
 
-function toUzCategory(englishId) {
-  return CATEGORY_UZ_MAP[englishId] || "boshqa";
+function toUzCategory(id) {
+  return CATEGORY_UZ_MAP[id] || "boshqa";
 }
 
 module.exports = { detectIntentAI, detectIntentKeyword, toUzCategory, CATEGORIES };

@@ -1,31 +1,41 @@
 "use strict";
 /**
- * HUQUQ AI — Production Legal AI Pipeline
+ * HUQUQ AI — Production Legal AI Pipeline v2
  *
- * Architecture:
- *   User Message
- *     → Safety Check (safetyLayer)
- *     → Intent Detection (intentDetector)
- *     → Web Search / Law Retrieval (webSearch)
- *     → Model Selection (modelRouter)
- *     → Conversation Memory (conversationMemory)
- *     → System Prompt (retrieval-first)
- *     → LLM (Gemini / Groq)
- *     → Answer Validation (answerValidator)
- *     → Safety Response Check
- *     → Final Answer
+ * Asosiy tuzatishlar:
+ *  - Colloquial Uzbek parser (uzbekParser)
+ *  - Complexity-based response format (plain/brief/structured)
+ *  - Uzbek-first: hech qachon inglizcha sarlavhalar
+ *  - Context validation: faqat user aytgan narsalar
+ *  - Hallucination filter: o'ylab chiqarilgan bola/shaxs yo'q
  */
 
-const Groq          = require("groq-sdk");
+const Groq = require("groq-sdk");
 const { GoogleGenAI } = require("@google/genai");
 
 const { searchWeb, formatSearchContext } = require("./webSearch");
-const { detectIntentAI, toUzCategory }   = require("./Intentdetector");
-const { checkUserMessage, checkAIResponse, SAFETY_RESULT } = require("./Safetylayer");
-const { validateAnswer }                 = require("./Answervalidator");
-const { selectModel }                    = require("./Modelrouter");
-const { buildConversationContext, extractLegalFacts, buildMemorySummary } = require("./Conversationmemory");
-const { detectDocumentType, buildDocumentSystemPrompt } = require("./Documentgenerator");
+const { detectIntentAI, toUzCategory } = require("./intentDetector");
+const {
+  checkUserMessage,
+  checkAIResponse,
+  SAFETY_RESULT,
+} = require("./safetyLayer");
+const { validateAnswer } = require("./answerValidator");
+const { selectModel } = require("./modelRouter");
+const {
+  buildConversationContext,
+  extractLegalFacts,
+  buildMemorySummary,
+} = require("./conversationMemory");
+const {
+  detectDocumentType,
+  buildDocumentSystemPrompt,
+} = require("./documentGenerator");
+const {
+  parseUzbekIntent,
+  getResponseFormat,
+  QUESTION_COMPLEXITY,
+} = require("./Uzbekparser");
 
 // ── AI clients ────────────────────────────────────────────────
 const groqClient = process.env.GROQ_API_KEY
@@ -36,286 +46,308 @@ const geminiClient = process.env.GEMINI_API_KEY
   ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
   : null;
 
-// ── Language detection ────────────────────────────────────────
+// ── Til aniqlash ──────────────────────────────────────────────
 function detectLanguage(text = "") {
   if (/[а-яА-ЯёЁ]{3,}/u.test(text)) return "ru";
-  if (/[a-zA-Z]{3,}/.test(text) && !/[а-яА-ЯёЁа-яА-Яа-яА-Я]/u.test(text)) return "en";
+  if (/\b[a-zA-Z]{4,}\b/.test(text) && !/[а-яА-ЯёЁo'ʻ]/u.test(text))
+    return "en";
   return "uz";
 }
 
-function buildLangInstruction(lang) {
-  const rules = {
-    uz: "Faqat o'zbek tilida javob ber. Agar foydalanuvchi lotin alifbosida yozgan bo'lsa — lotin alifbosida, kiril bo'lsa — kirilda.",
-    ru: "Отвечай только на русском языке.",
-    en: "Respond only in English.",
-  };
-  return rules[lang] || rules.uz;
+// ── System prompt — til va murakkablikka qarab ────────────────
+function buildSystemPrompt({
+  lang,
+  category,
+  webContext,
+  memorySummary,
+  responseFormat,
+  uzbekIntent,
+  hasSeriousCrime,
+}) {
+  // ── Til ko'rsatmasi ──
+  const LANG_RULE =
+    {
+      uz: `MUHIM: Faqat O'ZBEK TILIDA yoz. Hech qanday inglizcha sarlavha, so'z yoki ibora ishlatma.
+Lotin yoki kirill — foydalanuvchi qaysi alifboda yozsa, shunda javob ber.`,
+      ru: `ВАЖНО: Отвечай ТОЛЬКО на РУССКОМ ЯЗЫКЕ. Никаких английских заголовков или фраз.`,
+      en: `IMPORTANT: Respond ONLY in ENGLISH.`,
+    }[lang] || `Faqat o'zbek tilida yoz.`;
+
+  // ── Format ko'rsatmasi ──
+  const FORMAT_RULE =
+    {
+      plain: `JAVOB FORMATI: Oddiy paragraf. Hech qanday emoji sarlavha, hech qanday "📌 Vaziyat" kabi tuzilma ishlatma.
+Masalan:
+"Agar sizni ko'chada urib ketishgan bo'lsa, ichki ishlar bo'limiga yoki prokuraturaga ariza berishingiz mumkin. Tan jarohati bo'lsa, tibbiy ma'lumotnomani saqlab qo'ying."`,
+
+      brief: `JAVOB FORMATI: 2-3 qisqa paragraf. Faqat kerak bo'lsa bitta sarlavha ishlat.
+Ortiqcha tuzilma, uzun ro'yxat, yoki inglizcha heading ISHLATMA.`,
+
+      structured: `JAVOB FORMATI: Strukturalangan javob quyidagi bo'limlar bilan (faqat o'zbek tilida):
+📌 Vaziyat: (qisqa xulosa)
+⚖️ Huquqiy tahlil: (faqat tasdiqlangan qonunlarga asoslangan)
+✅ Nima qilish kerak: (aniq qadamlar)
+📍 Xulosa: (qisqa tavsiya)`,
+    }[responseFormat] || `JAVOB FORMATI: Oddiy paragraf.`;
+
+  // ── Intent hint ──
+  const intentHint = uzbekIntent?.hasActions
+    ? `Foydalanuvchi niyati: ${uzbekIntent.hints.join(", ")}.`
+    : "";
+
+  // ── Qonun konteksti ──
+  const lawContext = webContext
+    ? `\nTASHQI QONUN MANBALARI (faqat quyidagilardan foydalaning):\n${webContext}\n(Bu yerda yo'q bo'lgan modda raqamlarini O'YLAB CHIQARMA.)`
+    : "\n[Ushbu so'rov uchun tasdiqlangan qonun manbasi topilmadi — aniq modda raqami keltirma]";
+
+  // ── Memory ──
+  const memNote = memorySummary ? `\nSuhbat konteksti: ${memorySummary}` : "";
+
+  // ── Og'ir jinoyat ──
+  const crimeNote = hasSeriousCrime
+    ? `\nOGOHLANTIRISH: Og'ir jinoyat mavzusi. Jimlik huquqini (JPK 68) eslatib o't. Darhol advokat tavsiya qil.`
+    : "";
+
+  return `Siz O'zbekiston huquqi bo'yicha ixtisoslashgan AI huquqiy yordamchisiz.
+
+${LANG_RULE}
+
+QOIDA — NIMA QILMA:
+1. Foydalanuvchi xabarida yo'q shaxslar, bolalar, qarindoshlar haqida hech narsa o'ylab chiqarma.
+2. Inglizcha sarlavha (Situation, Legal Analysis, Steps, Conclusion) ISHLATMA.
+3. Tasdiqlangan manbada yo'q modda raqamini KELTIRMA — "aniq modda tasdiqlanmagan" de.
+4. Xalqaro yoki boshqa davlat qonunlarini tilga olma — faqat O'zbekiston.
+5. Takroriy jumlalar yozma.
+
+${intentHint}
+Huquqiy soha: ${category !== "unknown" ? category : "aniqlanmadi"}
+
+${FORMAT_RULE}
+${crimeNote}
+${memNote}
+${lawContext}`;
 }
 
-// ── Core System Prompt (Retrieval-First) ─────────────────────
-function buildSystemPrompt({ lang, category, webContext, memorySummary, isDocument, docType, hasSeriousCrime, criminalGuidance }) {
-  const langInstruction = buildLangInstruction(lang);
-
-  const retrievedLaws = webContext
-    ? `\n\n════ RETRIEVED LEGAL CONTEXT ════\n${webContext}\n(Use ONLY this retrieved information for legal references. DO NOT add article numbers not found here.)\n════════════════════════════════`
-    : "\n\n[No verified law sources retrieved for this query]";
-
-  const memorySection = memorySummary
-    ? `\n\n${memorySummary}`
-    : "";
-
-  const criminalSection = hasSeriousCrime
-    ? `\n\nSERIOUS CRIME DETECTED — MANDATORY GUIDANCE:
-- Explain legal consequences clearly
-- Mention right to remain silent (JPK 68)
-- Strongly recommend immediate lawyer consultation
-- Do NOT explain how to evade or minimize punishment`
-    : "";
-
-  const documentSection = isDocument
-    ? `\n\nDOCUMENT MODE: Generate a complete ${docType} document with proper legal formatting. Use [PLACEHOLDER] for unknown details. Never invent case numbers, judge names, or government addresses.`
-    : "";
-
-  const categoryHint = category !== "unknown"
-    ? `\nDetected legal area: ${category}`
-    : "";
-
-  return `You are a production-grade Legal AI assistant for Uzbekistan law.
-
-LANGUAGE RULE: ${langInstruction}
-${categoryHint}
-
-════════════════════════════════════
-CORE PRINCIPLES (NON-NEGOTIABLE)
-════════════════════════════════════
-1. RETRIEVAL-FIRST: Base ALL legal references on the retrieved context below.
-   If a law is not in the retrieved context → say "exact article could not be verified."
-2. NEVER invent article numbers, law names, or legal citations from memory.
-3. NEVER repeat sentences or paragraphs.
-4. NEVER explain how to commit crimes, evade justice, or destroy evidence.
-5. You are a legal ASSISTANT — not a judge, lawyer, or prosecutor.
-6. If uncertain → say "I am not certain" rather than guess.
-7. Keep responses concise and actionable.
-
-════════════════════════════════════
-RESPONSE FORMAT (when relevant)
-════════════════════════════════════
-📌 Vaziyat / Situation: (brief summary)
-⚖️ Huquqiy tahlil / Legal analysis: (based ONLY on retrieved laws)
-✅ Nima qilish kerak / Steps: (clear, ordered)
-📝 Hujjat / Document: (if requested)
-📍 Xulosa / Conclusion: (short recommendation)
-
-For simple questions: plain paragraph, no structure needed.
-
-════════════════════════════════════
-QUALITY CHECKLIST (internal)
-════════════════════════════════════
-Before responding, verify:
-□ Is every article number from retrieved context?
-□ Any repetition? → Remove
-□ Is advice actionable and safe?
-□ Is tone professional and calm?
-□ Is response appropriately concise?
-${criminalSection}${documentSection}${memorySection}${retrievedLaws}`;
-}
-
-// ── Groq call ─────────────────────────────────────────────────
+// ── Groq ──────────────────────────────────────────────────────
 async function callGroq(messages, model) {
-  if (!groqClient) throw new Error("GROQ_API_KEY not configured");
-
+  if (!groqClient) throw new Error("GROQ_API_KEY sozlanmagan");
   const resp = await groqClient.chat.completions.create({
-    model:       model,
+    model,
     messages,
-    temperature: 0.25,
-    top_p:       0.9,
-    max_tokens:  2000,
+    temperature: 0.2,
+    top_p: 0.9,
+    max_tokens: 1500,
   });
-
   return resp.choices?.[0]?.message?.content?.trim() || "";
 }
 
-// ── Gemini call ───────────────────────────────────────────────
-async function callGemini(systemPrompt, userMessage, history, imageBase64, imageMimeType) {
-  if (!geminiClient) throw new Error("GEMINI_API_KEY not configured");
+// ── Gemini ────────────────────────────────────────────────────
+async function callGemini(
+  systemPrompt,
+  userMessage,
+  history,
+  imageBase64,
+  imageMimeType,
+) {
+  if (!geminiClient) throw new Error("GEMINI_API_KEY sozlanmagan");
 
-  const model = geminiClient.models;
   const contents = [];
-
-  // History
   for (const msg of history) {
     contents.push({
-      role:  msg.role === "assistant" ? "model" : "user",
+      role: msg.role === "assistant" ? "model" : "user",
       parts: [{ text: String(msg.content || "").slice(0, 600) }],
     });
   }
 
-  // Current user message
   const userParts = [];
   if (imageBase64) {
-    userParts.push({ inlineData: { mimeType: imageMimeType || "image/jpeg", data: imageBase64 } });
     userParts.push({
-      text: `Analyze this legal document image carefully. Extract: names, dates, amounts, signatures, organization names, document type. Then answer: ${userMessage}`,
+      inlineData: {
+        mimeType: imageMimeType || "image/jpeg",
+        data: imageBase64,
+      },
+    });
+    userParts.push({
+      text: `Ushbu huquqiy hujjat rasmini tahlil qil. Nomlar, sanalar, summalar, imzolar va hujjat turini aniqlang. Keyin javob ber: ${userMessage}`,
     });
   } else {
     userParts.push({ text: userMessage });
   }
   contents.push({ role: "user", parts: userParts });
 
-  const resp = await model.generateContent({
-    model:  "gemini-2.0-flash",
+  const resp = await geminiClient.models.generateContent({
+    model: "gemini-2.0-flash",
     config: {
       systemInstruction: systemPrompt,
-      temperature:       0.25,
-      topP:              0.9,
-      maxOutputTokens:   2000,
+      temperature: 0.2,
+      topP: 0.9,
+      maxOutputTokens: 1500,
     },
     contents,
   });
-
   return resp.text?.trim() || "";
 }
 
-// ── Main pipeline ─────────────────────────────────────────────
-async function getLegalAdvice(userMessage, history = [], imageBase64 = null, imageMimeType = "image/jpeg", lang = "uz") {
-  const msg = String(userMessage || "").trim().slice(0, 2000);
+// ── Asosiy pipeline ───────────────────────────────────────────
+async function getLegalAdvice(
+  userMessage,
+  history = [],
+  imageBase64 = null,
+  imageMimeType = "image/jpeg",
+  lang = "uz",
+) {
+  const msg = String(userMessage || "")
+    .trim()
+    .slice(0, 2000);
   if (!msg) return { answer: "Xabar bo'sh.", category: "unknown" };
 
-  // Auto-detect language if not provided
   const detectedLang = lang === "uz" ? detectLanguage(msg) : lang;
 
-  // ── STEP 1: Safety Check ──────────────────────────────────
+  // ── 1. Safety ─────────────────────────────────────────────
   const safetyResult = checkUserMessage(msg);
-
   if (safetyResult.status === SAFETY_RESULT.BLOCKED) {
-    return {
-      answer:   safetyResult.message,
-      category: "blocked",
-    };
+    return { answer: safetyResult.message, category: "blocked" };
   }
-
   const hasSeriousCrime = safetyResult.status === SAFETY_RESULT.REDIRECTED;
-  const criminalGuidance = hasSeriousCrime ? safetyResult.guidance : null;
 
-  // ── STEP 2: Intent Detection ──────────────────────────────
-  const category    = await detectIntentAI(msg);
-  const uzCategory  = toUzCategory(category);
+  // ── 2. Colloquial Uzbek parsing ──────────────────────────
+  const uzbekIntent = parseUzbekIntent(msg);
+  const responseFormat = getResponseFormat(
+    uzbekIntent.complexity,
+    uzbekIntent.hasActions,
+  );
 
-  // ── STEP 3: Document Detection ────────────────────────────
-  const isDocumentRequest = /ariza|shikoyat|da['']vo|sudga|aliment|shartnoma|petitsiya|bildirishnoma|hujjat|document|заявление|жалоба|договор/i.test(msg);
-  const docType = isDocumentRequest ? detectDocumentType(msg) : null;
+  // ── 3. Intent detection ───────────────────────────────────
+  const category = await detectIntentAI(msg);
+  const uzCategory = toUzCategory(category);
 
-  // ── STEP 4: Law Retrieval (RAG) ───────────────────────────
+  // ── 4. Document detection ─────────────────────────────────
+  const isDoc =
+    /ariza|shikoyat|da['']vo|shartnoma|petitsiya|bildirishnoma/i.test(msg);
+  const docType = isDoc ? detectDocumentType(msg) : null;
+
+  // ── 5. Law retrieval ──────────────────────────────────────
   let webContext = "";
   try {
-    const searchQuery = `O'zbekiston ${category !== "unknown" ? category : ""} ${msg.slice(0, 150)} qonun`;
-    const webResults  = await searchWeb(searchQuery, 4);
-    webContext = formatSearchContext(webResults);
-  } catch (err) {
-    console.warn("Law retrieval skipped:", err.message);
+    const q = `O'zbekiston ${category !== "unknown" ? category + " huquq" : "qonun"} ${msg.slice(0, 120)}`;
+    webContext = formatSearchContext(await searchWeb(q, 3));
+  } catch (e) {
+    console.warn("Law retrieval skipped:", e.message);
   }
 
-  // ── STEP 5: Conversation Memory ───────────────────────────
+  // ── 6. Memory ─────────────────────────────────────────────
   const relevantHistory = buildConversationContext(history, msg);
-  const legalFacts      = extractLegalFacts(history);
-  const memorySummary   = buildMemorySummary(legalFacts);
+  const memorySummary = buildMemorySummary(extractLegalFacts(history));
 
-  // ── STEP 6: Model Selection ───────────────────────────────
-  const modelSelection = selectModel({
-    userMessage:   msg,
+  // ── 7. Model selection ────────────────────────────────────
+  const modelSel = selectModel({
+    userMessage: msg,
     category,
-    hasImage:      !!imageBase64,
+    hasImage: !!imageBase64,
     historyLength: history.length,
   });
 
-  // ── STEP 7: Build System Prompt ───────────────────────────
-  const systemPrompt = isDocumentRequest
+  // ── 8. System prompt ──────────────────────────────────────
+  const systemPrompt = isDoc
     ? buildDocumentSystemPrompt(docType)
     : buildSystemPrompt({
-        lang:           detectedLang,
+        lang: detectedLang,
         category,
         webContext,
         memorySummary,
-        isDocument:     false,
+        responseFormat,
+        uzbekIntent,
         hasSeriousCrime,
-        criminalGuidance,
       });
 
-  // ── STEP 8: LLM Call ──────────────────────────────────────
+  // ── 9. LLM call ───────────────────────────────────────────
   let rawAnswer = "";
-
   try {
-    if (modelSelection.provider === "gemini" && geminiClient) {
-      rawAnswer = await callGemini(systemPrompt, msg, relevantHistory, imageBase64, imageMimeType);
-    } else if (groqClient) {
-      const messages = [
-        { role: "system",  content: systemPrompt },
-        ...relevantHistory,
-        { role: "user",    content: msg },
-      ];
-      rawAnswer = await callGroq(messages, modelSelection.model);
+    if (modelSel.provider === "gemini" && geminiClient) {
+      rawAnswer = await callGemini(
+        systemPrompt,
+        msg,
+        relevantHistory,
+        imageBase64,
+        imageMimeType,
+      );
     } else {
-      throw new Error("No AI provider available");
-    }
-  } catch (primaryErr) {
-    console.warn(`Primary model (${modelSelection.model}) failed:`, primaryErr.message);
-
-    // Fallback: boshqa provider
-    try {
-      if (modelSelection.provider === "gemini" && groqClient) {
-        const fallbackMessages = [
+      rawAnswer = await callGroq(
+        [
           { role: "system", content: systemPrompt },
           ...relevantHistory,
-          { role: "user",   content: msg },
-        ];
-        rawAnswer = await callGroq(fallbackMessages, "llama-3.3-70b-versatile");
+          { role: "user", content: msg },
+        ],
+        modelSel.model,
+      );
+    }
+  } catch (err) {
+    console.warn("Primary LLM failed:", err.message);
+    try {
+      if (modelSel.provider === "gemini" && groqClient) {
+        rawAnswer = await callGroq(
+          [
+            { role: "system", content: systemPrompt },
+            ...relevantHistory,
+            { role: "user", content: msg },
+          ],
+          "llama-3.3-70b-versatile",
+        );
       } else if (geminiClient) {
-        rawAnswer = await callGemini(systemPrompt, msg, relevantHistory, null, null);
+        rawAnswer = await callGemini(
+          systemPrompt,
+          msg,
+          relevantHistory,
+          null,
+          null,
+        );
       } else {
-        throw new Error("All providers failed");
+        throw new Error("Barcha provayderlar ishlamayapti");
       }
-    } catch (fallbackErr) {
-      console.error("All AI providers failed:", fallbackErr.message);
+    } catch (fe) {
+      console.error("All LLMs failed:", fe.message);
       return {
-        answer:   "Hozir texnik muammo yuz berdi. Iltimos, biroz kutib qayta urinib ko'ring.",
+        answer: "Texnik muammo. Iltimos, qayta urinib ko'ring.",
         category: uzCategory,
       };
     }
   }
 
-  // Og'ir jinoyat bo'lsa — boshida huquqiy ogohlantirish qo'shish
-  if (hasSeriousCrime && criminalGuidance) {
-    const warning = criminalGuidance.advice[detectedLang] || criminalGuidance.advice.uz;
-    rawAnswer = `⚠️ ${warning}\n\n${rawAnswer}`;
+  // Og'ir jinoyat ogohlantirish
+  if (hasSeriousCrime) {
+    const warn = {
+      uz: "⚠️ Bu og'ir jinoyat mavzusi. Advokat bilan darhol maslahatlashing. Jimlik huquqingiz bor — tergov paytida advokatdan tashqari hech narsa aytmang.\n\n",
+      ru: "⚠️ Это серьёзная уголовная тема. Немедленно проконсультируйтесь с адвокатом. Вы имеете право молчать.\n\n",
+      en: "⚠️ This involves serious criminal matters. Consult a lawyer immediately. You have the right to remain silent.\n\n",
+    };
+    rawAnswer = (warn[detectedLang] || warn.uz) + rawAnswer;
   }
 
-  // ── STEP 9: Answer Validation ─────────────────────────────
-  const { valid, text: validatedAnswer } = validateAnswer(rawAnswer, {
-    lang:          detectedLang,
-    addDisclaimer: false, // Har doim disclaimer qo'shilmaydi — faqat kerakli hollarda
+  // ── 10. Validate ──────────────────────────────────────────
+  const { valid, text: finalAnswer } = validateAnswer(rawAnswer, {
+    lang: detectedLang,
+    userMessage: msg,
   });
 
   if (!valid) {
     return {
-      answer:   "Javob yaratishda xatolik yuz berdi. Savolingizni boshqacha ifodalab ko'ring.",
+      answer:
+        "Javob yaratishda xatolik. Savolingizni boshqacha ifodalab ko'ring.",
       category: uzCategory,
     };
   }
 
-  // ── STEP 10: Safety Response Check ───────────────────────
-  const responseCheck = checkAIResponse(validatedAnswer);
-  if (!responseCheck.safe) {
-    console.warn("Safety filter triggered on AI response");
+  // ── 11. Response safety check ─────────────────────────────
+  const check = checkAIResponse(finalAnswer);
+  if (!check.safe) {
     return {
-      answer:   "Bu mavzu bo'yicha umumiy huquqiy yo'nalish uchun malakali advokat bilan maslahatlashishni tavsiya etamiz.",
+      answer:
+        "Bu mavzu bo'yicha malakali advokat bilan maslahatlashingizni tavsiya etamiz.",
       category: uzCategory,
     };
   }
 
-  return {
-    answer:   validatedAnswer,
-    category: uzCategory,
-  };
+  return { answer: finalAnswer, category: uzCategory };
 }
 
 module.exports = { getLegalAdvice };

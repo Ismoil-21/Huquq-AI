@@ -1,106 +1,109 @@
 "use strict";
 /**
  * Answer Validator
- * AI javobini sifat nazoratidan o'tkazadi:
  * 1. Takroriy jumlalarni olib tashlaydi
- * 2. O'ylab chiqarilgan modda raqamlarini aniqlaydi va ogohlantiradi
- * 3. Tasdiqlangan kontekstga asoslanmagan da'volarni belgilaydi
- * 4. Javobni professional formatga keltiradi
+ * 2. O'ylab chiqarilgan modda raqamlarini bloklaydi
+ * 3. Xabardan tashqari kiritilgan shaxslar/qurbonlarni olib tashlaydi
+ * 4. Inglizcha bo'limlari o'zbek javobiga aralashmasligi uchun filtr
  */
+
+// ── Tasdiqlangan qonun kodlari va modda chegaralari ───────────
+const LAW_LIMITS = {
+  MK: 490, OK: 175, JK: 300, JPK: 540,
+  FK: 1300, YK: 100, SK: 400, MhK: 200,
+};
+
+// ── Inglizcha section headinglarni olib tashlash ──────────────
+const EN_HEADINGS = [
+  /^(situation|legal analysis|what to do|conclusion|steps?|important|note)\s*:/im,
+  /^(📌\s*situation|⚖️\s*legal analysis|✅\s*what to do|📍\s*conclusion)\s*/im,
+];
+
+function removeEnglishHeadings(text, lang) {
+  if (lang !== "uz" && lang !== "ru") return text;
+  let result = text;
+  for (const pat of EN_HEADINGS) {
+    result = result.replace(pat, "");
+  }
+  return result;
+}
 
 // ── Takroriy jumlalarni olib tashlash ─────────────────────────
 function removeDuplicateSentences(text) {
   if (!text) return "";
-
-  const sentences = text
-    .split(/(?<=[.!?।])\s+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-
+  const sentences = text.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
   const seen = new Set();
-  const unique = [];
-
-  for (const sentence of sentences) {
-    const normalized = sentence.toLowerCase().replace(/\s+/g, " ");
-    if (!seen.has(normalized)) {
-      seen.add(normalized);
-      unique.push(sentence);
-    }
-  }
-
-  return unique.join(" ");
+  return sentences.filter(s => {
+    const key = s.toLowerCase().replace(/\s+/g, " ");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).join(" ");
 }
 
-// ── Takroriy paragraflarni olib tashlash ──────────────────────
+// ── Takroriy paragraflarni olib tashlash ─────────────────────
 function removeDuplicateParagraphs(text) {
   if (!text) return "";
-
-  const paragraphs = text.split(/\n{2,}/);
+  const paras = text.split(/\n{2,}/);
   const seen = new Set();
-  const unique = [];
-
-  for (const para of paragraphs) {
-    const normalized = para.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 100);
-    if (normalized && !seen.has(normalized)) {
-      seen.add(normalized);
-      unique.push(para.trim());
-    }
-  }
-
-  return unique.join("\n\n");
+  return paras.filter(p => {
+    const key = p.trim().toLowerCase().slice(0, 80);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).join("\n\n");
 }
 
-// ── O'ylab chiqarilgan modda raqamlarini aniqlash ─────────────
-// Aniq ma'lum bo'lgan qonun kodlari va ularning maksimal modda raqamlari
-const LAW_ARTICLE_LIMITS = {
-  "MK":   300,  // Mehnat kodeksi
-  "OK":   175,  // Oila kodeksi
-  "JK":   300,  // Jinoyat kodeksi
-  "JPK":  540,  // Jinoyat-protsessual kodeksi
-  "FK":  1300,  // Fuqarolik kodeksi
-  "YK":   100,  // Yer kodeksi
-  "SK":   400,  // Soliq kodeksi
-};
-
-function detectSuspiciousArticles(text) {
-  const warnings = [];
-
-  // Pattern: MK 108-modda, JK 97-modda, FK 1113-modda
-  const articlePattern = /\b([A-Z]{2,3})\s+(\d+)-modda\b/g;
-  let match;
-
-  while ((match = articlePattern.exec(text)) !== null) {
-    const code = match[1];
-    const num = parseInt(match[2]);
-    const limit = LAW_ARTICLE_LIMITS[code];
-
+// ── Shubhali modda raqamlarini aniqlash ───────────────────────
+function removeSuspiciousArticles(text) {
+  let result = text;
+  const pat = /\b([A-ZА-Я][a-zA-Zа-яА-Яo'ʻ]{0,3}[K]?)\s+(\d+)-modda\b/g;
+  let m;
+  while ((m = pat.exec(text)) !== null) {
+    const code = m[1].toUpperCase();
+    const num = parseInt(m[2]);
+    const limit = LAW_LIMITS[code];
     if (limit && num > limit) {
-      warnings.push({
-        original: match[0],
-        reason:   `${code} ${num}-modda — bu kodeksda ${limit} dan oshiq modda mavjud emas`,
-      });
+      result = result.replace(m[0], "[modda raqami tasdiqlanmagan]");
     }
   }
-
-  return warnings;
+  return result;
 }
 
-// ── Disclaimer qo'shish ───────────────────────────────────────
-function addLegalDisclaimer(text, lang = "uz") {
-  const disclaimers = {
-    uz: "\n\n⚠️ Eslatma: Bu ma'lumot umumiy huquqiy yo'nalish uchun. Aniq huquqiy qaror uchun malakali advokat bilan maslahatlashing.",
-    ru: "\n\n⚠️ Примечание: Это общая правовая информация. Для конкретного юридического решения проконсультируйтесь с квалифицированным адвокатом.",
-    en: "\n\n⚠️ Note: This is general legal guidance only. For specific legal decisions, consult a qualified lawyer.",
-  };
-  return text + (disclaimers[lang] || disclaimers.uz);
+// ── Xabardan tashqari kiritilgan ob'ektlarni tekshirish ───────
+// userMessage da yo'q bo'lsa, javobda "bola", "farzand" so'zlari bo'lmasin
+function removeHallucinatedEntities(responseText, userMessage) {
+  const userLow = userMessage.toLowerCase();
+  let result = responseText;
+
+  // "bola" faqat agar user aytgan bo'lsa
+  const userMentionsChild = /\b(bola|farzand|o'g'il|qiz|voyaga yetmagan|minor)\b/i.test(userLow);
+  if (!userMentionsChild) {
+    // Javobda bola haqida gap bo'lsa — olib tashlash emas, lekin warn
+    // (chunki "u bolani" = o'sha odam, bola emas)
+    result = result
+      .replace(/voyaga yetmagan\s+[a-zA-Zo'ʻа-яА-Я]+/gi, "")
+      .replace(/\b(minor|child victim|underage)\b/gi, "");
+  }
+
+  // User inglizcha yozmagan bo'lsa — inglizcha katta bo'laklar olib tashlansin
+  const userIsUzbek = !/[a-zA-Z]{4,}/.test(userLow.replace(/[0-9]/g, ""));
+  if (userIsUzbek) {
+    // Inglizcha sarlavhalar olib tashlash
+    result = result
+      .replace(/\b(Legal Analysis|What to do|Situation|Conclusion|Important|Steps|Note)\s*:/g, "")
+      .replace(/\b(Based on Uzbekistan law|According to the law|Under Uzbek law)\b/gi, "O'zbekiston qonunchiligiga ko'ra");
+  }
+
+  return result.trim();
 }
 
-// ── Output cleaner ─────────────────────────────────────────────
+// ── Markdown tozalash ─────────────────────────────────────────
 function cleanMarkdown(text) {
   return text
     .replace(/\*\*/g, "")
     .replace(/#{1,6} /g, "")
-    .replace(/^\s*[-*]\s/gm, "• ")
+    .replace(/^\s*[-*•]\s/gm, "• ")
     .trim();
 }
 
@@ -108,53 +111,30 @@ function cleanMarkdown(text) {
 function validateAnswer(text, options = {}) {
   if (!text || typeof text !== "string") return { valid: false, text: "" };
 
+  const lang        = options.lang || "uz";
+  const userMessage = options.userMessage || "";
+
   let result = text;
 
-  // 1. Takroriy jumlalarni olib tashlash
+  result = removeEnglishHeadings(result, lang);
   result = removeDuplicateSentences(result);
-
-  // 2. Takroriy paragraflarni olib tashlash
   result = removeDuplicateParagraphs(result);
-
-  // 3. Markdown tozalash
+  result = removeSuspiciousArticles(result);
+  result = removeHallucinatedEntities(result, userMessage);
   result = cleanMarkdown(result);
 
-  // 4. Shubhali modda raqamlarini aniqlash
-  const articleWarnings = detectSuspiciousArticles(result);
-  if (articleWarnings.length > 0) {
-    for (const w of articleWarnings) {
-      // Shubhali modda raqamini almashtirish
-      result = result.replace(
-        w.original,
-        `[aniq modda raqami tasdiqlanmagan]`
-      );
-    }
+  if (result.trim().length < 15) {
+    return { valid: false, text: "Javob yaratilmadi. Qayta urinib ko'ring." };
   }
 
-  // 5. Minimal uzunlik tekshiruvi
-  if (result.trim().length < 20) {
-    return {
-      valid: false,
-      text:  "Javob generatsiya qilinmadi. Qayta urinib ko'ring.",
-    };
-  }
-
-  // 6. Disclaimer (agar kerak bo'lsa)
-  if (options.addDisclaimer && result.length > 200) {
-    result = addLegalDisclaimer(result, options.lang);
-  }
-
-  return {
-    valid: true,
-    text:  result,
-    warnings: articleWarnings,
-  };
+  return { valid: true, text: result.trim() };
 }
 
 module.exports = {
   validateAnswer,
   removeDuplicateSentences,
   removeDuplicateParagraphs,
-  detectSuspiciousArticles,
+  removeSuspiciousArticles,
+  removeHallucinatedEntities,
   cleanMarkdown,
 };
