@@ -11,7 +11,6 @@ import ProfileModal from "./ProfileModal";
 import s from "./SiteLayout.module.css";
 import instagram from "../../public/Instagram_logo_2022.svg";
 import telegram from "../../public/Telegram.png";
-import adaptive from "../../assets/adaptive-icon.png"
 
 const NAV = [
   { to: "/", end: true, key: "nav_home" },
@@ -59,8 +58,16 @@ export default function SiteLayout() {
       <nav className={s.nav}>
         <div className={s.navInner}>
           <Link to="/" className={s.logo} onClick={() => setMenuOpen(false)}>
-            <span>
-              <img width={70} style={{paddingTop: "10px", borderRadius: "50%"}} src={adaptive} alt="" />
+            <span className={s.logoIcon}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <line x1="12" y1="3" x2="12" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <line x1="4" y1="7" x2="20" y2="7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <line x1="4" y1="7" x2="1" y2="14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M1 14 Q2.5 17 4 14" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"/>
+                <line x1="20" y1="7" x2="23" y2="14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M20 14 Q21.5 17 23 14" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"/>
+                <line x1="9" y1="21" x2="15" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
             </span>
             <span className={s.logoText}>{t.nav_logo}</span>
           </Link>
@@ -154,7 +161,7 @@ export default function SiteLayout() {
           <div className={s.menuOverlay} onClick={() => setMenuOpen(false)} aria-hidden="true" />
           <div className={s.mobileMenu}>
             <div className={s.mobileMenuHead}>
-              <span>⚖ {t.nav_logo}</span>
+              <span className={s.logoIcon}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><line x1="12" y1="3" x2="12" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="4" y1="7" x2="20" y2="7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="4" y1="7" x2="1" y2="14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M1 14 Q2.5 17 4 14" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"/><line x1="20" y1="7" x2="23" y2="14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M20 14 Q21.5 17 23 14" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"/><line x1="9" y1="21" x2="15" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg></span><span>{t.nav_logo}</span>
               <button type="button" className={s.mobileClose} onClick={() => setMenuOpen(false)}>✕</button>
             </div>
             {NAV.map((item) => (
@@ -214,7 +221,7 @@ export default function SiteLayout() {
       <footer className={s.footer}>
         <div className={s.footerInner}>
           <Link to="/" className={s.footerLogo}>
-            <span className={s.logoShield}>⚖</span>
+            <span className={s.logoIcon}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><line x1="12" y1="3" x2="12" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="4" y1="7" x2="20" y2="7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="4" y1="7" x2="1" y2="14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M1 14 Q2.5 17 4 14" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"/><line x1="20" y1="7" x2="23" y2="14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M20 14 Q21.5 17 23 14" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"/><line x1="9" y1="21" x2="15" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg></span>
             <span>{t.nav_logo}</span>
           </Link>
           <span className={s.footerCopy}>{t.footer_copyright}</span>

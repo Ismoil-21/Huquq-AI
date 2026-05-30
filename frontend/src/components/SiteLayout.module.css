@@ -44,6 +44,25 @@
   font-weight: 700;
 }
 
+.logoIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #1D9E75 0%, #0F6E56 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(29,158,117,0.35);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.logo:hover .logoIcon {
+  transform: scale(1.08) rotate(-4deg);
+  box-shadow: 0 4px 16px rgba(29,158,117,0.5);
+}
+
 .logoText {
   font-family: var(--font-display);
   font-size: 15px;

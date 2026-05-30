@@ -86,7 +86,7 @@ export default function Profile() {
     <div className={s.page}>
       <div className={s.card} style={{ maxWidth: 480 }}>
         <div className={s.cardTop}>
-          <Link to="/" className={s.logo}>⚖ Mening Huquqim</Link>
+          <Link to="/" className={s.logo}><span className={s.logoIcon}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><line x1="12" y1="3" x2="12" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="4" y1="7" x2="20" y2="7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="4" y1="7" x2="1" y2="14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M1 14 Q2.5 17 4 14" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"/><line x1="20" y1="7" x2="23" y2="14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M20 14 Q21.5 17 23 14" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"/><line x1="9" y1="21" x2="15" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg></span><span>Mening Huquqim</span></Link>
           <LangSwitcher />
         </div>
 
