@@ -20,12 +20,12 @@ const Groq          = require("groq-sdk");
 const { GoogleGenAI } = require("@google/genai");
 
 const { searchWeb, formatSearchContext } = require("./webSearch");
-const { detectIntentAI, toUzCategory }   = require("./intentDetector");
-const { checkUserMessage, checkAIResponse, SAFETY_RESULT } = require("./safetyLayer");
-const { validateAnswer }                 = require("./answerValidator");
-const { selectModel }                    = require("./modelRouter");
-const { buildConversationContext, extractLegalFacts, buildMemorySummary } = require("./conversationMemory");
-const { detectDocumentType, buildDocumentSystemPrompt } = require("./documentGenerator");
+const { detectIntentAI, toUzCategory }   = require("./Intentdetector");
+const { checkUserMessage, checkAIResponse, SAFETY_RESULT } = require("./Safetylayer");
+const { validateAnswer }                 = require("./Answervalidator");
+const { selectModel }                    = require("./Modelrouter");
+const { buildConversationContext, extractLegalFacts, buildMemorySummary } = require("./Conversationmemory");
+const { detectDocumentType, buildDocumentSystemPrompt } = require("./Documentgenerator");
 
 // ── AI clients ────────────────────────────────────────────────
 const groqClient = process.env.GROQ_API_KEY

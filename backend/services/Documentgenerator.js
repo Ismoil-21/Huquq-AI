@@ -31,6 +31,7 @@ function detectDocumentType(userMessage) {
   return DOCUMENT_TYPES.ARIZA;
 }
 
+
 // Hujjat shabloni uchun sistem prompt
 function buildDocumentSystemPrompt(docType) {
   const base = `You are a professional legal document writer for Uzbekistan law.
