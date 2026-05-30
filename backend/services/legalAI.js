@@ -14,23 +14,23 @@ const Groq = require("groq-sdk");
 const { GoogleGenAI } = require("@google/genai");
 
 const { searchWeb, formatSearchContext } = require("./webSearch");
-const { detectIntentAI, toUzCategory } = require("./intentDetector");
+const { detectIntentAI, toUzCategory } = require("./Intentdetector");
 const {
   checkUserMessage,
   checkAIResponse,
   SAFETY_RESULT,
-} = require("./safetyLayer");
-const { validateAnswer } = require("./answerValidator");
-const { selectModel } = require("./modelRouter");
+} = require("./Safetylayer");
+const { validateAnswer } = require("./Answervalidator");
+const { selectModel } = require("./Modelrouter");
 const {
   buildConversationContext,
   extractLegalFacts,
   buildMemorySummary,
-} = require("./conversationMemory");
+} = require("./Conversationmemory");
 const {
   detectDocumentType,
   buildDocumentSystemPrompt,
-} = require("./documentGenerator");
+} = require("./Documentgenerator");
 const {
   parseUzbekIntent,
   getResponseFormat,
