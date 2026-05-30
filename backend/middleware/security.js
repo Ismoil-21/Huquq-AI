@@ -9,12 +9,31 @@
  */
 
 // ── In-memory brute-force tracker ────────────────────────────
+// ESLATMA: Bu in-memory — server restart da tozalanadi.
+// Production da Redis ishlatish tavsiya etiladi.
 const loginAttempts = new Map(); // ip -> { count, resetAt }
-const blockedIPs    = new Map(); // ip -> unblockAt
+const blockedIPs = new Map(); // ip -> unblockAt
+
+// Eskirgan yozuvlarni tozalash (xotira tejash uchun)
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [ip, unblockAt] of blockedIPs.entries()) {
+      if (now > unblockAt) {
+        blockedIPs.delete(ip);
+        loginAttempts.delete(ip);
+      }
+    }
+    for (const [ip, entry] of loginAttempts.entries()) {
+      if (now > entry.resetAt) loginAttempts.delete(ip);
+    }
+  },
+  5 * 60 * 1000,
+); // har 5 daqiqada
 
 const MAX_LOGIN_ATTEMPTS = 5;
-const BLOCK_DURATION_MS  = 15 * 60 * 1000; // 15 daqiqa
-const ATTEMPT_WINDOW_MS  = 10 * 60 * 1000; // 10 daqiqa
+const BLOCK_DURATION_MS = 15 * 60 * 1000; // 15 daqiqa
+const ATTEMPT_WINDOW_MS = 10 * 60 * 1000; // 10 daqiqa
 
 // ── IP bloklash ──────────────────────────────────────────────
 function getClientIp(req) {
@@ -39,10 +58,13 @@ function isIPBlocked(ip) {
 
 function recordFailedLogin(ip) {
   const now = Date.now();
-  const entry = loginAttempts.get(ip) || { count: 0, resetAt: now + ATTEMPT_WINDOW_MS };
+  const entry = loginAttempts.get(ip) || {
+    count: 0,
+    resetAt: now + ATTEMPT_WINDOW_MS,
+  };
 
   if (now > entry.resetAt) {
-    entry.count  = 1;
+    entry.count = 1;
     entry.resetAt = now + ATTEMPT_WINDOW_MS;
   } else {
     entry.count++;
@@ -79,7 +101,8 @@ function bruteForceGuard(req, res, next) {
 }
 
 // ── Input sanitizatsiya (XSS, NoSQL injection) ───────────────
-const NOSQL_DANGEROUS = /(\$where|\$gt|\$lt|\$ne|\$in|\$nin|\$regex|\$exists|\$or|\$and|\$not|\$nor)/i;
+const NOSQL_DANGEROUS =
+  /(\$where|\$gt|\$lt|\$ne|\$in|\$nin|\$regex|\$exists|\$or|\$and|\$not|\$nor)/i;
 
 function sanitizeValue(val) {
   if (typeof val === "string") {
@@ -128,7 +151,8 @@ function inputSanitizer(req, res, next) {
 
   // Shubhali User-Agent
   const ua = req.headers["user-agent"] || "";
-  const suspiciousUA = /sqlmap|nikto|nmap|masscan|burpsuite|dirbuster|hydra|medusa|acunetix|nessus|openvas/i;
+  const suspiciousUA =
+    /sqlmap|nikto|nmap|masscan|burpsuite|dirbuster|hydra|medusa|acunetix|nessus|openvas/i;
   if (suspiciousUA.test(ua)) {
     return res.status(403).json({ error: "Ruxsat yo'q" });
   }
@@ -139,7 +163,12 @@ function inputSanitizer(req, res, next) {
 // ── Path traversal himoya ─────────────────────────────────────
 function pathTraversalGuard(req, res, next) {
   const url = req.url || "";
-  if (url.includes("../") || url.includes("..\\") || url.includes("%2e%2e") || url.includes("%252e")) {
+  if (
+    url.includes("../") ||
+    url.includes("..\\") ||
+    url.includes("%2e%2e") ||
+    url.includes("%252e")
+  ) {
     return res.status(400).json({ error: "Noto'g'ri so'rov" });
   }
   next();
@@ -149,8 +178,13 @@ function pathTraversalGuard(req, res, next) {
 function contentTypeGuard(req, res, next) {
   if (["POST", "PUT", "PATCH"].includes(req.method)) {
     const ct = req.headers["content-type"] || "";
-    if (!ct.includes("application/json") && !ct.includes("multipart/form-data")) {
-      return res.status(415).json({ error: "Qo'llab-quvvatlanmaydigan media turi" });
+    if (
+      !ct.includes("application/json") &&
+      !ct.includes("multipart/form-data")
+    ) {
+      return res
+        .status(415)
+        .json({ error: "Qo'llab-quvvatlanmaydigan media turi" });
     }
   }
   next();
@@ -162,7 +196,10 @@ function securityHeaders(req, res, next) {
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("X-XSS-Protection", "1; mode=block");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+  res.setHeader(
+    "Permissions-Policy",
+    "geolocation=(), microphone=(), camera=()",
+  );
   res.removeHeader("X-Powered-By");
   next();
 }
@@ -184,10 +221,13 @@ function botGuard(req, res, next) {
     const ua = req.headers["user-agent"] || "";
     // Ruxsat etilgan bot agentlari (mobile app, postman testing)
     const allowedBots = /expo|okhttp|axios|mobile|android|iphone|ipad|postman/i;
-    const isBotAttack = /python-requests|go-http|curl\/[0-9]|wget|scrapy|phantom/i;
+    const isBotAttack =
+      /python-requests|go-http|curl\/[0-9]|wget|scrapy|phantom/i;
     if (isBotAttack.test(ua) && !allowedBots.test(ua)) {
-      // Loglash, lekin bloklash emas (dev maqsadida)
-      console.warn(`⚠️ Shubhali agent: ${ua} - IP: ${getClientIp(req)}`);
+      console.warn(
+        `⚠️ Shubhali agent bloklandi: ${ua} - IP: ${getClientIp(req)}`,
+      );
+      return res.status(403).json({ error: "Ruxsat yo'q" });
     }
   }
   next();

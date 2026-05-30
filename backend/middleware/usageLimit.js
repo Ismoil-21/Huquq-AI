@@ -76,50 +76,31 @@ async function checkAndIncrement(userId) {
   const user = await User.findById(userId).select("dailyLimit").lean();
   const limit = user?.dailyLimit ?? 20;
 
-  // BUG FIX: avval joriy countni tekshiramiz, keyin increment qilamiz
-  // Bu race condition ni oldini oladi: limit oshib ketmasligi uchun
-  const existing = await UsageLog.findOne({ userId, date }).lean();
-  if (existing && existing.count >= limit) {
-    const unblockAt = getUnblockTime();
-    const msLeft = msUntilUnblock(unblockAt);
-    return {
-      limitExceeded: true,
-      used: limit,
-      limit,
-      unblockAt,
-      msLeft,
-      timeLeft: {
-        uz: formatTimeLeft(msLeft, "uz"),
-        ru: formatTimeLeft(msLeft, "ru"),
-        en: formatTimeLeft(msLeft, "en"),
-      },
-      unblockAtStr: {
-        uz: formatUnblockAt(unblockAt, "uz"),
-        ru: formatUnblockAt(unblockAt, "ru"),
-        en: formatUnblockAt(unblockAt, "en"),
-      },
-    };
-  }
-
+  // ATOMIC: count < limit bo'lgandagina increment qiladi
+  // Bu parallel so'rovlarda ham limitni kafolatli saqlaydi
   const log = await UsageLog.findOneAndUpdate(
-    { userId, date },
+    { userId, date, count: { $lt: limit } },
     { $inc: { count: 1 } },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
+    { upsert: false, new: true },
   );
 
-  if (log.count > limit) {
-    await UsageLog.updateOne({ userId, date }, { $inc: { count: -1 } });
-
+  // log null = yozuv yo'q (birinchi savol) yoki limit to'lgan
+  if (!log) {
+    // Birinchi savol bo'lsa upsert
+    const existing = await UsageLog.findOne({ userId, date }).lean();
+    if (!existing) {
+      await UsageLog.create({ userId, date, count: 1 });
+      return null; // OK, birinchi savol
+    }
+    // Limit to'lgan
     const unblockAt = getUnblockTime();
     const msLeft = msUntilUnblock(unblockAt);
-
     return {
       limitExceeded: true,
-      used: limit,
+      used: existing.count,
       limit,
       unblockAt,
       msLeft,
-      // har 3 tilda tayyor stringlar
       timeLeft: {
         uz: formatTimeLeft(msLeft, "uz"),
         ru: formatTimeLeft(msLeft, "ru"),
@@ -133,7 +114,7 @@ async function checkAndIncrement(userId) {
     };
   }
 
-  return null;
+  return null; // OK
 }
 
 /**

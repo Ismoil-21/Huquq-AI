@@ -54,7 +54,13 @@ app.use(
 app.use(securityHeaders);
 
 /* ───── CORS ───── */
-const defaultOrigins = ["http://localhost:5173", "http://localhost:5174", "https://huquq-ai-fpa2.onrender.com", "https://huquq-ai-rose.vercel.app", "https://huquq-ai-admin.vercel.app"];
+const defaultOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "https://huquq-ai-fpa2.onrender.com",
+  "https://huquq-ai-rose.vercel.app",
+  "https://huquq-ai-admin.vercel.app",
+];
 const frontendUrl = process.env.FRONTEND_URL;
 
 const allowedOrigins = [
@@ -106,12 +112,43 @@ app.use(
 );
 
 /* ───── RATE LIMIT ───── */
+// Umumiy API rate limit
 app.use(
   "/api/",
   rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 200,
-    message: { error: "Juda ko'p so'rov" },
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+      error: "Juda ko'p so'rov. 15 daqiqadan so'ng qayta urinib ko'ring.",
+    },
+  }),
+);
+
+// Auth endpointlari uchun qattiqroq limit (brute-force himoya)
+app.use(
+  "/api/auth/",
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+      error: "Juda ko'p urinish. 15 daqiqadan so'ng qayta urinib ko'ring.",
+    },
+  }),
+);
+
+// Chat endpointi uchun alohida limit
+app.use(
+  "/api/chat/",
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Juda tez yuborilmoqda. Bir oz kuting." },
   }),
 );
 
@@ -165,7 +202,19 @@ mongoose
     if (adminCount === 0) {
       await Admin.create({
         username: process.env.ADMIN_USERNAME || "admin",
-        password: process.env.ADMIN_PASSWORD || "admin123",
+        password:
+          process.env.ADMIN_PASSWORD ||
+          (() => {
+            if (process.env.NODE_ENV === "production") {
+              throw new Error(
+                "ADMIN_PASSWORD muhit o'zgaruvchisi o'rnatilmagan!",
+              );
+            }
+            console.warn(
+              "⚠️  Default admin password ishlatilmoqda — faqat development uchun!",
+            );
+            return "admin123";
+          })(),
       });
       console.log("✅ Default admin yaratildi");
     }
